@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STICK BRAWL — Ultimate v4</title>
+  <link rel="stylesheet" href="css/pages.css">
+  <style>
+    /* ── Cinematic letterbox ─────────────────── */
+    .lbox {
+      position: fixed; left: 0; right: 0; height: 72px;
+      background: #000; z-index: 20; pointer-events: none;
+    }
+    .lbox.top { top: 0;    transform: translateY(-100%); animation: lbIn  .55s ease .08s forwards; }
+    .lbox.bot { bottom: 0; transform: translateY(100%);  animation: lbBot .55s ease .08s forwards; }
+    @keyframes lbIn  { to { transform: none; } }
+    @keyframes lbBot { to { transform: none; } }
+
+    /* ── Title block ─────────────────────────── */
+    .title-wrap {
+      position: fixed; left: 50%; top: 28%;
+      transform: translateX(-50%);
+      text-align: center; z-index: 15; pointer-events: none;
+    }
+    .slam-title {
+      font-size: 100px; font-weight: 900; line-height: 0.86;
+      background: linear-gradient(160deg, #818cf8 0%, #fff 45%, #818cf8 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      opacity: 0;
+      animation: titleSlam .75s cubic-bezier(.18,.85,.3,1.25) 1.35s forwards;
+      filter: drop-shadow(0 0 55px rgba(79,70,229,.85));
+      white-space: nowrap;
+    }
+    @keyframes titleSlam {
+      0%   { opacity: 0; transform: translateY(-420px) scaleY(2.2) scaleX(.65); filter: drop-shadow(0 0 0 transparent); }
+      58%  { opacity: 1; transform: translateY(18px)  scaleY(.86)  scaleX(1.08); filter: drop-shadow(0 0 70px rgba(79,70,229,.9)); }
+      78%  { transform: translateY(-7px) scaleY(1.04) scaleX(.98); }
+      92%  { transform: translateY(3px)  scaleY(.99)  scaleX(1.01); }
+      100% { opacity: 1; transform: none; filter: drop-shadow(0 0 40px rgba(79,70,229,.75)); }
+    }
+    .title-sub {
+      opacity: 0; font-size: 12px; letter-spacing: 4px; color: #475569;
+      margin-top: 10px; animation: fadeUp .4s ease 2.2s forwards;
+    }
+    .title-course {
+      opacity: 0; font-size: 10px; letter-spacing: 2px; color: #2d3748;
+      margin-top: 4px;  animation: fadeUp .4s ease 2.4s forwards;
+    }
+
+    /* ── VS ring ─────────────────────────────── */
+    .vs-wrap {
+      position: fixed; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 15; pointer-events: none;
+      opacity: 0; animation: vsIn .5s cubic-bezier(.22,1,.36,1) 2.0s forwards;
+    }
+    @keyframes vsIn { from{opacity:0;transform:translate(-50%,-50%) scale(.4)} to{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+
+    .vs-ring {
+      width: 74px; height: 74px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 2.5px solid rgba(255,255,255,.12); position: relative;
+      animation: vsGlow 2.5s ease-in-out 2.1s infinite;
+      box-shadow: 0 0 40px rgba(79,70,229,.5), inset 0 0 22px rgba(79,70,229,.14);
+    }
+    @keyframes vsGlow { 0%,100%{box-shadow:0 0 30px rgba(79,70,229,.4)} 50%{box-shadow:0 0 70px rgba(99,102,241,.85)} }
+    .vs-ring::before {
+      content:''; position:absolute; inset:-10px; border-radius:50%;
+      border:2.5px solid transparent;
+      border-top-color:rgba(79,70,229,.95); border-bottom-color:rgba(220,38,38,.95);
+      animation:vsRot 2s linear 2.1s infinite;
+    }
+    .vs-ring::after {
+      content:''; position:absolute; inset:-20px; border-radius:50%;
+      border:1.5px solid transparent;
+      border-left-color:rgba(124,58,237,.55); border-right-color:rgba(248,113,113,.55);
+      animation:vsRot 3.2s linear 2.1s infinite reverse;
+    }
+    @keyframes vsRot { to { transform:rotate(360deg); } }
+    .vs-txt { font-size:24px; font-weight:900; letter-spacing:2px; position:relative; z-index:1; }
+
+    /* ── Nameplates ───────────────────────────── */
+    .np {
+      position: fixed; bottom: 90px; z-index: 15; pointer-events: none;
+      opacity: 0;
+    }
+    .np.left  { left:  7%; animation: npL .5s ease 1.85s forwards; }
+    .np.right { right: 7%; text-align: right; animation: npR .5s ease 1.85s forwards; }
+    @keyframes npL { from{opacity:0;transform:translateX(-24px)} to{opacity:1;transform:none} }
+    @keyframes npR { from{opacity:0;transform:translateX( 24px)} to{opacity:1;transform:none} }
+    .np-name { font-size: 13px; font-weight: 900; letter-spacing: 3px; }
+    .np-type { font-size:  9px; color: #475569; letter-spacing: 2px; margin-top: 3px; }
+
+    /* ── Press to start ──────────────────────── */
+    .press-btn {
+      position: fixed; left: 50%; bottom: 86px;
+      transform: translateX(-50%); z-index: 15;
+      opacity: 0; white-space: nowrap;
+      animation: fadeUp .5s ease 2.7s forwards, blink 2.2s ease 3s infinite;
+    }
+    @keyframes fadeUp { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+    /* Main canvas */
+    #stageCanvas { position:fixed; inset:0; z-index:1; pointer-events:none; }
+
+    /* Music toggle button */
+    #musicBtn {
+      position:fixed; bottom:24px; right:28px; z-index:50;
+      background:rgba(15,23,42,.75); border:1.5px solid rgba(99,102,241,.35);
+      border-radius:10px; padding:8px 14px;
+      color:#64748b; font-size:11px; font-weight:700; letter-spacing:1.5px;
+      cursor:pointer; transition:all .25s;
+      opacity:0; animation: fadeUp .4s ease 3.1s forwards;
+    }
+    #musicBtn:hover { border-color:#4f46e5; color:#818cf8; background:rgba(79,70,229,.15); }
+    #musicBtn.on    { color:#818cf8; border-color:rgba(99,102,241,.6); }
+  </style>
+</head>
+<body>
+
+  <!-- Letterbox -->
+  <div class="lbox top"></div>
+  <div class="lbox bot"></div>
+
+  <!-- Main canvas (stage, spotlights, fighters, effects) -->
+  <canvas id="stageCanvas"></canvas>
+
+  <!-- Title -->
+  <div class="title-wrap">
+    <h1 class="slam-title">STICK BRAWL</h1>
+    <p class="title-sub">ULTIMATE EDITION &nbsp; v4</p>
+    <p class="title-course">ISP568 — Fuzzy Logic Systems</p>
+  </div>
+
+  <!-- VS ring -->
+  <div class="vs-wrap">
+    <div class="vs-ring"><span class="vs-txt">VS</span></div>
+  </div>
+
+  <!-- Nameplates -->
+  <div class="np left">
+    <div class="np-name" style="color:#4f46e5">ARCANE MAGE</div>
+    <div class="np-type">SPELL CASTER</div>
+  </div>
+  <div class="np right">
+    <div class="np-name" style="color:#dc2626">IRON BRAWLER</div>
+    <div class="np-type">MELEE FIGHTER</div>
+  </div>
+
+  <!-- Press to start -->
+  <button class="btn-press press-btn" id="startBtn">
+    PRESS ANY KEY &nbsp;·&nbsp; CLICK TO START
+  </button>
+
+  <!-- Music toggle -->
+  <button id="musicBtn">🎵 &nbsp;MUSIC</button>
+
+  <!-- HUD corners -->
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+
+  <script src="js/shared.js"></script>
+  <script src="js/music.js"></script>
+  <script>
+  /* ═══════════════════════════════════════════════
+     CINEMATIC BATTLE STAGE INTRO
+  ═══════════════════════════════════════════════ */
+  (function () {
+    'use strict';
+    const cv  = document.getElementById('stageCanvas');
+    const ctx = cv.getContext('2d');
+    const T0  = Date.now();
+    const LBOX = 72;
+
+    let W, H, stageY, leftX, rightX, fighterY;
+
+    function resize() {
+      W = cv.width  = window.innerWidth;
+      H = cv.height = window.innerHeight;
+      stageY  = LBOX + (H - LBOX * 2) * 0.70;
+      leftX   = W * 0.22;
+      rightX  = W * 0.78;
+      fighterY = stageY - 82;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    /* ── Utilities ──────────────────────────────── */
+    function sec() { return (Date.now() - T0) * 0.001; }
+
+    function ln(x1, y1, x2, y2) {
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+    function circ(x, y, r, fill, glow, gr) {
+      if (glow) { ctx.shadowBlur = gr || 14; ctx.shadowColor = glow; }
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); } else ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    /* ── Stars ──────────────────────────────────── */
+    const STARS = Array.from({ length: 160 }, () => ({
+      x:  Math.random() * 5000 - 2500,
+      y:  Math.random() * (stageY - LBOX) * 0.9 + LBOX,
+      r:  Math.random() * 1.6 + 0.2,
+      tw: Math.random() * Math.PI * 2,
+      ts: 0.008 + Math.random() * 0.018,
+    }));
+
+    /* ── Atmospheric mist particles ─────────────── */
+    const mist = Array.from({ length: 24 }, () => resetMist({}));
+    function resetMist(p) {
+      p.x    = Math.random() * 99999 % W;
+      p.y    = stageY + Math.random() * 55;
+      p.r    = Math.random() * 30 + 12;
+      p.vy   = -(0.04 + Math.random() * 0.12);
+      p.a    = Math.random() * 0.05 + 0.02;
+      p.life = 0;
+      p.max  = 180 + Math.random() * 140;
+      return p;
+    }
+
+    /* ── Spotlight spotlight definition ─────────── */
+    function drawSpotlight(sx, topY, botY, hexCol, alpha) {
+      if (alpha <= 0) return;
+      const hw  = 155;    // half-width at stage
+      const sw  = 8;      // half-width at source
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // Cone
+      const cg = ctx.createLinearGradient(sx, topY, sx, botY);
+      cg.addColorStop(0, 'rgba(0,0,0,0)');
+      cg.addColorStop(0.4, hexAlpha(hexCol, 0.05));
+      cg.addColorStop(1,   hexAlpha(hexCol, 0.18));
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.moveTo(sx - sw, topY);
+      ctx.lineTo(sx - hw, botY);
+      ctx.lineTo(sx + hw, botY);
+      ctx.lineTo(sx + sw, topY);
+      ctx.closePath();
+      ctx.fill();
+      // Floor pool
+      const pg = ctx.createRadialGradient(sx, botY, 0, sx, botY, hw);
+      pg.addColorStop(0, hexAlpha(hexCol, 0.22));
+      pg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = pg;
+      ctx.fillRect(sx - hw, botY - 20, hw * 2, 55);
+      ctx.restore();
+    }
+
+    function hexAlpha(hex, a) {
+      const r = parseInt(hex.slice(1,3),16);
+      const g = parseInt(hex.slice(3,5),16);
+      const b = parseInt(hex.slice(5,7),16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    /* ── Stage floor ────────────────────────────── */
+    function drawStage(t) {
+      const sh = H - stageY;
+      // Floor base
+      const fg = ctx.createLinearGradient(0, stageY, 0, stageY + sh);
+      fg.addColorStop(0, '#1a2035');
+      fg.addColorStop(1, '#080c18');
+      ctx.fillStyle = fg; ctx.fillRect(0, stageY, W, sh);
+
+      // Surface glow line
+      const lg = ctx.createLinearGradient(0, stageY, W, stageY);
+      lg.addColorStop(0,    'rgba(79,70,229,0)');
+      lg.addColorStop(0.22, 'rgba(79,70,229,0.5)');
+      lg.addColorStop(0.50, 'rgba(255,255,255,0.85)');
+      lg.addColorStop(0.78, 'rgba(220,38,38,0.5)');
+      lg.addColorStop(1,    'rgba(220,38,38,0)');
+      ctx.fillStyle = lg; ctx.fillRect(0, stageY, W, 2.5);
+
+      // Sheen under fighters
+      [leftX, rightX].forEach(fx => {
+        const sg = ctx.createRadialGradient(fx, stageY, 0, fx, stageY, 120);
+        sg.addColorStop(0, 'rgba(99,102,241,0.12)');
+        sg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = sg; ctx.fillRect(fx - 120, stageY, 240, 45);
+      });
+
+      // Subtle tile lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 90) { ln(x, stageY, x, stageY + sh); }
+      for (let y = stageY + 30; y < H - LBOX; y += 40) { ln(0, y, W, y); }
+
+      // Fade to black at very bottom (below bottom letterbox edge)
+      const bf = ctx.createLinearGradient(0, H - LBOX - 30, 0, H - LBOX + 10);
+      bf.addColorStop(0, 'rgba(0,0,0,0)'); bf.addColorStop(1, '#000');
+      ctx.fillStyle = bf; ctx.fillRect(0, H - LBOX - 30, W, 45);
+    }
+
+    /* ── Fighter shadow ─────────────────────────── */
+    function drawShadow(fx, alpha) {
+      if (alpha <= 0) return;
+      ctx.save(); ctx.globalAlpha = alpha * 0.55;
+      const sg = ctx.createRadialGradient(fx, stageY + 4, 0, fx, stageY + 4, 65);
+      sg.addColorStop(0, 'rgba(0,0,0,0.8)');
+      sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = sg;
+      ctx.scale(1, 0.22);
+      ctx.beginPath(); ctx.arc(fx, (stageY + 4) / 0.22, 65, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    /* ══════════════════════════════════════════════
+       MAGE — pre-battle cinematic pose
+       Staff extended forward, orb charging, slow sway
+    ══════════════════════════════════════════════ */
+    function drawMage(t) {
+      const C = '#4f46e5', C2 = '#818cf8', SC = 1.65;
+      const sx = Math.sin(t * 1.2) * 3, sy = Math.sin(t * 0.9) * 5;
+      const opulse = 0.55 + 0.45 * Math.sin(t * 3.2);
+
+      ctx.save(); ctx.translate(leftX + sx, fighterY + sy);
+
+      // Aura
+      const aura = ctx.createRadialGradient(0, 0, 6, 0, 6, 68 * SC);
+      aura.addColorStop(0, C + '2e'); aura.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = aura;
+      ctx.beginPath(); ctx.arc(0, 0, 68 * SC, 0, Math.PI * 2); ctx.fill();
+
+      ctx.scale(SC, SC);
+
+      // Legs
+      const lsw = Math.sin(t * 1.5) * 3;
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2.5;
+      ln(0, 13, -14 - lsw, 48); ln(0, 13, 14 + lsw, 48);
+
+      // Body
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2.5;
+      ln(0, -15, 0, 13);
+
+      // Left arm relaxed
+      const laA = -2.1 + Math.sin(t * 1.0) * 0.08;
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2.2;
+      ln(0, -8, Math.cos(laA) * 22, -8 + Math.sin(Math.abs(laA)) * 18);
+
+      // Right arm — staff forward
+      const raA = -0.42 + Math.sin(t * 0.75) * 0.06;
+      const raX  = Math.cos(raA) * 26, raY = -8 + Math.sin(raA) * 26;
+      ln(0, -8, raX, raY);
+
+      // Staff
+      const stX = raX + Math.cos(raA) * 24, stY = raY + Math.sin(raA) * 24;
+      ctx.strokeStyle = C; ctx.lineWidth = 3.5;
+      ctx.shadowBlur = 12; ctx.shadowColor = C;
+      ln(raX, raY, stX, stY);
+
+      // Orb
+      const orbR = 10 + opulse * 6;
+      circ(stX, stY, orbR, C, C, 20 + opulse * 28);
+      ctx.globalAlpha = 0.42 + opulse * 0.4;
+      ctx.fillStyle = '#fff'; ctx.shadowBlur = 0;
+      circ(stX, stY, orbR * 0.36, '#fff');
+      ctx.globalAlpha = 1;
+
+      // Orbiting ring
+      ctx.strokeStyle = C2; ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.4 + opulse * 0.35;
+      ctx.shadowBlur = 8; ctx.shadowColor = C2;
+      circ(stX, stY, orbR + 9 + Math.sin(t * 4.5) * 5, null);
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+      // Head
+      ctx.strokeStyle = C; ctx.lineWidth = 2.5;
+      ctx.shadowBlur = 10; ctx.shadowColor = C;
+      circ(0, -29, 13, '#0f172a'); ctx.stroke(); ctx.shadowBlur = 0;
+
+      // Eyes
+      ctx.fillStyle = C2;
+      const bl = (t % 4.2) > 4.10;
+      if (!bl) { circ(4, -31, 2.5, C2); circ(9, -31, 2.5, C2); }
+      else { ctx.fillRect(2, -32, 5, 1.5); ctx.fillRect(7, -32, 5, 1.5); }
+
+      ctx.restore();
+
+      // Return orb world pos
+      return { orbX: leftX + sx + stX * SC, orbY: fighterY + sy + stY * SC };
+    }
+
+    /* ══════════════════════════════════════════════
+       BRAWLER — guard stance, facing left
+       Fists raised, aggressive crouch, boxer bounce
+    ══════════════════════════════════════════════ */
+    function drawBrawler(t) {
+      const C = '#dc2626', C2 = '#f87171', SC = 1.65;
+      const sx = Math.sin(t * 1.3 + 1.2) * 2.5, sy = Math.sin(t * 1.0 + 0.6) * 4;
+      const gb = Math.sin(t * 4.2) * 3.5;   // boxer bounce
+
+      ctx.save(); ctx.translate(rightX + sx, fighterY + sy);
+
+      // Aura
+      const aura = ctx.createRadialGradient(0, 0, 6, 0, 6, 70 * SC);
+      aura.addColorStop(0, C + '2e'); aura.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = aura;
+      ctx.beginPath(); ctx.arc(0, 0, 70 * SC, 0, Math.PI * 2); ctx.fill();
+
+      ctx.scale(SC, SC);
+
+      // Wide stance legs
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3;
+      ln(0, 14, -20, 52); ln(0, 14, 20, 52);
+
+      // Body
+      ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 3;
+      ln(0, -16, 0, 14);
+
+      // Both arms with fists toward LEFT (negative x = toward mage)
+      const lFX = -22 + Math.sin(t * 3.1) * 3;
+      const lFY = -20 + gb;
+      const rFX = -18 + Math.sin(t * 3.7) * 2;
+      const rFY = -8  - gb;
+      const fR  = 11.5 + Math.sin(t * 5.0) * 1.5;
+
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2.5;
+      ctx.shadowBlur = 12; ctx.shadowColor = C;
+      ln(0, -8, lFX, lFY); circ(lFX, lFY, fR,     C, C, 16);
+      ln(0, -8, rFX, rFY); circ(rFX, rFY, fR - 1, C, C, 13);
+      ctx.shadowBlur = 0;
+
+      // Fist pulse rings
+      ctx.globalAlpha = 0.3 + Math.sin(t * 3.2) * 0.15;
+      ctx.strokeStyle = C2; ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 8; ctx.shadowColor = C2;
+      circ(lFX, lFY, fR + 8 + Math.sin(t * 4.5) * 5, null);
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+      // Head
+      ctx.strokeStyle = C; ctx.lineWidth = 2.5;
+      ctx.shadowBlur = 10; ctx.shadowColor = C;
+      circ(0, -31, 15, '#0f172a'); ctx.stroke(); ctx.shadowBlur = 0;
+
+      // Eyes face LEFT
+      ctx.fillStyle = C2;
+      const bl = (t % 5.5) > 5.40;
+      if (!bl) { circ(-4, -33, 2.5, C2); circ(-9, -33, 2.5, C2); }
+      else      { ctx.fillRect(-13, -34, 5, 1.5); ctx.fillRect(-7, -34, 5, 1.5); }
+
+      ctx.restore();
+
+      return { fistX: rightX + sx + lFX * SC, fistY: fighterY + sy + lFY * SC };
+    }
+
+    /* ── Impact effects ─────────────────────────── */
+    const impactRings = [];
+    const blastSparks = [];
+    let   flashAlpha  = 0;
+    let   slamTriggered = false;
+
+    function triggerSlam() {
+      const cx = W / 2, cy = H * 0.30;
+      // Shockwave rings
+      [
+        { col:'#fff',    max:360, spd:14, lw:4 },
+        { col:'#818cf8', max:500, spd:10, lw:3 },
+        { col:'#dc2626', max:650, spd: 7, lw:2 },
+      ].forEach(r => impactRings.push({ x:cx, y:cy, r:0, ...r, active:true }));
+
+      // Blast sparks
+      for (let i = 0; i < 32; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 4 + Math.random() * 10;
+        blastSparks.push({
+          x:cx, y:cy, vx:Math.cos(a)*s, vy:Math.sin(a)*s - 3.5,
+          r: Math.random() * 3.5 + 0.8,
+          c: ['#818cf8','#fff','#f87171','#fbbf24','#c7d2fe'][Math.floor(Math.random()*5)],
+          life:0, max:45 + Math.random()*25, grav:0.14,
+        });
+      }
+      flashAlpha = 1;
+    }
+
+    function updateImpact() {
+      // Rings
+      impactRings.forEach((r, i) => {
+        r.r += r.spd;
+        if (r.r >= r.max) { impactRings.splice(i, 1); return; }
+        const a = (1 - r.r / r.max) * 0.7;
+        ctx.save(); ctx.globalAlpha = a;
+        ctx.strokeStyle = r.col; ctx.lineWidth = r.lw * (1 - r.r / r.max * 0.6);
+        ctx.shadowBlur = 16; ctx.shadowColor = r.col;
+        ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      });
+
+      // Sparks
+      blastSparks.forEach((s, i) => {
+        s.x += s.vx; s.y += s.vy; s.vy += s.grav; s.life++;
+        if (s.life > s.max) { blastSparks.splice(i, 1); return; }
+        const a = (1 - s.life / s.max) * 0.9;
+        ctx.save(); ctx.globalAlpha = a;
+        ctx.fillStyle = s.c; ctx.shadowBlur = 8; ctx.shadowColor = s.c;
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+
+      // Flash
+      if (flashAlpha > 0.01) {
+        ctx.save(); ctx.globalAlpha = flashAlpha;
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+        flashAlpha *= 0.82;
+      }
+    }
+
+    /* ── Ambient sparks from orb/fists ──────────── */
+    const ambSparks = [];
+    function spawnAmb(x, y, col, n, spd) {
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = spd * (0.3 + Math.random() * 0.7);
+        ambSparks.push({
+          x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s - 0.5,
+          r: Math.random() * 2.2 + 0.5, c:col, grav:0.06,
+          life:0, max:18 + Math.random()*20,
+        });
+      }
+    }
+    function updateAmbSparks() {
+      ambSparks.forEach((s, i) => {
+        s.x += s.vx; s.y += s.vy; s.vy += s.grav; s.life++;
+        if (s.life > s.max) { ambSparks.splice(i, 1); return; }
+        const a = (1 - s.life / s.max) * 0.8;
+        ctx.save(); ctx.globalAlpha = a;
+        ctx.fillStyle = s.c; ctx.shadowBlur = 7; ctx.shadowColor = s.c;
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    /* ── Energy embers (mage ↔ brawler) ─────────── */
+    const embers = Array.from({ length: 26 }, (_, i) => resetEmber({}, i));
+    function resetEmber(e, i) {
+      const side = i < 13 ? -1 : 1;
+      e.x = W/2 + side * (180 + Math.random() * 80);
+      e.y = H/2 + (Math.random() - 0.5) * 100;
+      const tx = W/2, ty = H/2 + 37;
+      const dx = tx - e.x, dy = ty - e.y, dist = Math.hypot(dx, dy);
+      const spd = 0.6 + Math.random() * 1.0;
+      e.vx = dx/dist*spd; e.vy = dy/dist*spd;
+      e.r = Math.random() * 2 + 0.5;
+      e.c = side < 0 ? '#818cf8' : '#f87171';
+      e.life = 0; e.max = 60 + Math.random() * 50;
+      return e;
+    }
+    function updateEmbers() {
+      embers.forEach((e, i) => {
+        e.x += e.vx; e.y += e.vy; e.life++;
+        if (e.life > e.max) { resetEmber(e, i); return; }
+        const a = Math.sin(e.life / e.max * Math.PI) * 0.65;
+        ctx.save(); ctx.globalAlpha = a;
+        ctx.fillStyle = e.c; ctx.shadowBlur = 7; ctx.shadowColor = e.c;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    /* ── Nebula clouds in sky ───────────────────── */
+    function drawSkyNebula(t) {
+      [
+        { ox:.18, oy:.38, r:230, c:'#4f46e5', s:.000032, d:0   },
+        { ox:.80, oy:.36, r:210, c:'#dc2626', s:.000026, d:1.7 },
+        { ox:.50, oy:.10, r:180, c:'#7c3aed', s:.000040, d:3.2 },
+      ].forEach(n => {
+        const nx = W*n.ox + Math.sin(t*n.s+n.d)*28;
+        const ny = (H - LBOX*2)*n.oy + LBOX + Math.cos(t*n.s*.7+n.d)*18;
+        const g  = ctx.createRadialGradient(nx, ny, 0, nx, ny, n.r);
+        g.addColorStop(0, n.c + '1a');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, LBOX, W, H - LBOX*2);
+      });
+    }
+
+    /* ── Main render loop ───────────────────────── */
+    let lastSparkT = 0;
+
+    function frame() {
+      const t  = sec();
+      const ms = Date.now() - T0;
+
+      ctx.clearRect(0, 0, W, H);
+
+      /* sky & background */
+      const sky = ctx.createLinearGradient(0, LBOX, 0, stageY);
+      sky.addColorStop(0, '#08090f'); sky.addColorStop(1, '#0b0e1a');
+      ctx.fillStyle = sky; ctx.fillRect(0, LBOX, W, stageY - LBOX);
+
+      drawSkyNebula(ms);
+
+      /* stars */
+      STARS.forEach(s => {
+        s.tw += s.ts;
+        const a = 0.12 + Math.sin(s.tw) * 0.28;
+        ctx.save(); ctx.globalAlpha = Math.max(0, a);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      });
+
+      /* spotlights */
+      const sAlpha = Math.min(1, Math.max(0, (t - 0.55) / 0.9));
+      if (sAlpha > 0) {
+        const flicker = 0.82 + Math.sin(t * 11.3) * 0.06 + Math.random() * 0.025;
+        drawSpotlight(leftX,  LBOX + 2, stageY, '#818cf8', sAlpha * flicker);
+        drawSpotlight(rightX, LBOX + 2, stageY, '#f87171', sAlpha * flicker * 0.95);
+      }
+
+      /* stage */
+      drawStage(t);
+
+      /* shadows */
+      drawShadow(leftX,  sAlpha);
+      drawShadow(rightX, sAlpha);
+
+      /* fighters */
+      const fAlpha = Math.min(1, Math.max(0, (t - 0.3) / 0.75));
+      if (fAlpha > 0) {
+        ctx.save(); ctx.globalAlpha = fAlpha;
+        const mage  = drawMage(t);
+        const brawl = drawBrawler(t);
+        ctx.restore();
+
+        /* ambient sparks from mage orb */
+        if (fAlpha > 0.8 && t - lastSparkT > 0.12 && Math.random() < 0.6) {
+          lastSparkT = t;
+          spawnAmb(mage.orbX,  mage.orbY,  '#818cf8', 2, 3);
+          spawnAmb(brawl.fistX,brawl.fistY,'#f87171', 1, 2.5);
+        }
+      }
+
+      /* embers */
+      updateEmbers();
+      updateAmbSparks();
+
+      /* mist */
+      mist.forEach((p, i) => {
+        p.y += p.vy; p.life++;
+        if (p.life > p.max) { resetMist(p); return; }
+        const a = Math.sin(p.life / p.max * Math.PI) * p.a;
+        ctx.save(); ctx.globalAlpha = a;
+        ctx.fillStyle = 'rgba(200,210,240,1)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      });
+
+      /* title slam trigger */
+      if (!slamTriggered && t >= 2.08) { slamTriggered = true; triggerSlam(); }
+      updateImpact();
+
+      /* black letterbox fill (in case of resize) */
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, LBOX);
+      ctx.fillRect(0, H - LBOX, W, LBOX);
+
+      requestAnimationFrame(frame);
+    }
+    frame();
+  })();
+
+  /* ── Music toggle ───────────────────────────── */
+  (function () {
+    const btn = document.getElementById('musicBtn');
+    let on = false;
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation(); // prevent triggering navigation
+      on = !on;
+      if (on) {
+        MU.intro();
+        btn.textContent = '🔇  MUSIC';
+        btn.classList.add('on');
+      } else {
+        MU.stop(0.4);
+        btn.textContent = '🎵  MUSIC';
+        btn.classList.remove('on');
+      }
+    });
+  })();
+
+  /* ── Navigate ───────────────────────────────── */
+  function go() {
+    MU.stop(0.35);
+    SB.navigate('main-menu.html');
+  }
+  document.getElementById('startBtn').addEventListener('click', go);
+  window.addEventListener('keydown', function once() {
+    window.removeEventListener('keydown', once); go();
+  });
+  </script>
+
+</body>
+</html>

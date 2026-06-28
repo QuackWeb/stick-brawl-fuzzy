@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STICK BRAWL — Main Menu</title>
+  <link rel="stylesheet" href="css/pages.css">
+  <style>
+    /* ── Reset ───────────────────────────── */
+    * { cursor:none !important; }
+    html,body { width:100%;height:100%; overflow:hidden; }
+
+    /* ── Canvases ────────────────────────── */
+    #bgCv    { position:fixed;inset:0;z-index:0;pointer-events:none; }
+    #sceneCv { position:fixed;inset:0;z-index:2;pointer-events:none; }
+    #fxCv    { position:fixed;inset:0;z-index:8;pointer-events:none; }
+
+    /* ── Custom cursor ───────────────────── */
+    #c-dot {
+      position:fixed;z-index:9999;pointer-events:none;
+      width:10px;height:10px;border-radius:50%;margin:-5px 0 0 -5px;
+      background:#818cf8;box-shadow:0 0 14px #4f46e5,0 0 5px #fff;
+      transition:transform .12s,background .2s,box-shadow .2s;
+    }
+    #c-dot.on{transform:scale(2.2);background:#fff;box-shadow:0 0 22px #4f46e5,0 0 8px #fff;}
+    #c-ring {
+      position:fixed;z-index:9998;pointer-events:none;
+      width:38px;height:38px;border-radius:50%;margin:-19px 0 0 -19px;
+      border:1.5px solid rgba(99,102,241,.55);
+      transition:width .3s,height .3s,border-color .3s,margin .3s;
+    }
+    #c-ring.on{width:62px;height:62px;margin:-31px 0 0 -31px;border-color:rgba(99,102,241,.9);}
+
+    /* ══════════════════════════════════════
+       VERTICAL STRIPS
+    ══════════════════════════════════════ */
+    .strips {
+      position:fixed;inset:0;
+      display:flex;
+      z-index:5;
+    }
+
+    .strip {
+      flex:1;
+      position:relative;
+      overflow:hidden;
+      transition:flex .58s cubic-bezier(.22,1,.36,1);
+      cursor:pointer;
+      border-right:1px solid rgba(255,255,255,.04);
+    }
+    .strip:last-child{border-right:none;}
+    .strip.active{flex:7;}
+
+    /* ── Top accent line ─────────────────── */
+    .strip::before {
+      content:'';position:absolute;top:0;left:0;right:0;height:3px;
+      background:var(--col,#4f46e5);opacity:0;
+      box-shadow:0 0 22px var(--col,#4f46e5);
+      transition:opacity .35s;z-index:2;
+    }
+    .strip.active::before{opacity:1;}
+
+    /* ── Left accent bar ─────────────────── */
+    .strip::after {
+      content:'';position:absolute;top:0;left:0;bottom:0;width:3px;
+      background:linear-gradient(to bottom,var(--col,#4f46e5) 0%,transparent 100%);
+      opacity:0;transition:opacity .35s;z-index:2;
+    }
+    .strip.active::after,.strip:not(.active):hover::after{opacity:.5;}
+    .strip.active::after{opacity:1;}
+
+    /* ── Opaque cover (hides canvas) ─────── */
+    .s-cover {
+      position:absolute;inset:0;
+      background:var(--cover-bg,#050810);
+      opacity:.93;
+      transition:opacity .5s ease;
+      z-index:1;
+    }
+    .strip.active .s-cover   { opacity:.08; }
+    .strip:not(.active):hover .s-cover { opacity:.78; }
+
+    /* ── Subtle gradient tint at bottom ──── */
+    .s-tint {
+      position:absolute;bottom:0;left:0;right:0;height:55%;
+      background:linear-gradient(to top,var(--col,#4f46e5)12,transparent);
+      opacity:.06;z-index:1;
+      transition:opacity .4s;
+    }
+    .strip.active .s-tint    { opacity:.18; }
+    .strip:not(.active):hover .s-tint { opacity:.1; }
+
+    /* ── Icon (compressed state) ─────────── */
+    .s-icon {
+      position:absolute;top:52px;left:50%;
+      transform:translateX(-50%);
+      font-size:22px;z-index:3;
+      opacity:.35;
+      transition:opacity .3s,transform .3s;
+    }
+    .strip.active .s-icon       { opacity:0;transform:translateX(-50%) scale(.5); }
+    .strip:not(.active):hover .s-icon { opacity:.7; }
+
+    /* ── Vertical label (compressed) ─────── */
+    .s-label-v {
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%) rotate(180deg);
+      writing-mode:vertical-rl;
+      font-size:11px;font-weight:900;letter-spacing:4px;
+      color:rgba(255,255,255,.3);text-transform:uppercase;
+      white-space:nowrap;z-index:3;
+      transition:opacity .3s,transform .3s;
+    }
+    .strip.active .s-label-v {
+      opacity:0;
+      transform:translate(-50%,-50%) rotate(180deg) scale(.8);
+      pointer-events:none;
+    }
+    .strip:not(.active):hover .s-label-v { color:rgba(255,255,255,.55); }
+
+    /* ── Expanded content ─────────────────── */
+    .s-expand {
+      position:absolute;bottom:0;left:0;right:0;
+      padding:42px 38px;
+      z-index:3;pointer-events:none;
+    }
+
+    .s-tag {
+      display:inline-block;padding:4px 12px;border-radius:4px;
+      font-size:9px;font-weight:900;letter-spacing:2.5px;
+      border:1.5px solid var(--col,#4f46e5);
+      color:var(--col,#4f46e5);background:transparent;
+      margin-bottom:14px;
+      opacity:0;transform:translateY(18px);
+      transition:opacity .3s .1s,transform .3s .1s;
+    }
+    .s-title {
+      font-size:46px;font-weight:900;line-height:.9;
+      letter-spacing:1px;color:#f1f5f9;
+      margin-bottom:12px;
+      opacity:0;transform:translateY(22px);
+      transition:opacity .35s .18s,transform .35s .18s;
+    }
+    .s-desc {
+      font-size:13px;color:rgba(255,255,255,.45);
+      line-height:1.55;margin-bottom:24px;
+      opacity:0;transform:translateY(16px);
+      transition:opacity .3s .27s,transform .3s .27s;
+    }
+    .s-btn {
+      display:inline-flex;align-items:center;gap:10px;
+      padding:12px 28px;border-radius:8px;
+      background:var(--col,#4f46e5);color:#fff;
+      font-size:13px;font-weight:900;letter-spacing:1.5px;
+      border:none;cursor:pointer;
+      opacity:0;transform:translateY(14px);
+      transition:opacity .3s .35s,transform .3s .35s,filter .2s;
+    }
+    .s-btn:hover{filter:brightness(1.3);}
+
+    /* Animate in when strip is active */
+    .strip.active .s-tag   { opacity:1;transform:none; }
+    .strip.active .s-title { opacity:1;transform:none; }
+    .strip.active .s-desc  { opacity:1;transform:none; }
+    .strip.active .s-btn   { opacity:1;transform:none;pointer-events:all; }
+
+    /* ── STICK BRAWL title (top-left of active strip) */
+    .s-game-title {
+      position:absolute;top:36px;left:38px;
+      z-index:3;pointer-events:none;
+      opacity:0;transition:opacity .4s .05s;
+    }
+    .s-game-title h1{
+      font-size:14px;font-weight:900;letter-spacing:4px;
+      color:rgba(255,255,255,.25);
+    }
+    .strip.active .s-game-title{opacity:1;}
+
+    /* ── Strip number badge ───────────────── */
+    .s-num {
+      position:absolute;top:52px;left:50%;
+      transform:translateX(-50%);
+      font-size:9px;font-weight:700;letter-spacing:2px;
+      color:rgba(255,255,255,.18);
+      margin-top:28px;z-index:3;
+    }
+
+    /* ── Music toggle button ─────────────── */
+    #musicBtn {
+      position:fixed; bottom:22px; right:26px; z-index:50;
+      background:rgba(15,23,42,.8); border:1.5px solid rgba(51,65,85,.5);
+      border-radius:10px; padding:8px 14px;
+      color:#475569; font-size:11px; font-weight:700; letter-spacing:1.5px;
+      cursor:pointer !important; transition:all .25s;
+    }
+    #musicBtn:hover { border-color:#4f46e5; color:#818cf8; background:rgba(79,70,229,.15); }
+    #musicBtn.on    { color:#818cf8; border-color:rgba(99,102,241,.6); }
+  </style>
+</head>
+<body>
+
+  <!-- Cursors -->
+  <div id="c-dot"></div>
+  <div id="c-ring"></div>
+
+  <!-- Canvases -->
+  <canvas id="bgCv"></canvas>
+  <canvas id="sceneCv"></canvas>
+  <canvas id="fxCv"></canvas>
+
+  <!-- 5 Vertical Strips -->
+  <div class="strips" id="strips">
+
+    <!-- 1: Start Game (VS AI) -->
+    <div class="strip active" id="s-vs"
+         style="--col:#4f46e5;--cover-bg:#06080f"
+         data-scene="vs">
+      <div class="s-cover"></div>
+      <div class="s-tint"></div>
+      <div class="s-game-title"><h1>STICK BRAWL</h1></div>
+      <div class="s-icon">⚔</div>
+      <div class="s-label-v">Start Game</div>
+      <div class="s-expand">
+        <div class="s-tag">VS AI</div>
+        <h2 class="s-title">START<br>GAME</h2>
+        <p class="s-desc">Battle the fuzzy logic AI<br>in a best-of-3 match</p>
+        <button class="s-btn" onclick="go('vs')">PLAY NOW &nbsp;→</button>
+      </div>
+    </div>
+
+    <!-- 2: Training -->
+    <div class="strip" id="s-training"
+         style="--col:#f59e0b;--cover-bg:#110d02"
+         data-scene="training">
+      <div class="s-cover"></div>
+      <div class="s-tint"></div>
+      <div class="s-game-title"><h1>STICK BRAWL</h1></div>
+      <div class="s-icon">◎</div>
+      <div class="s-label-v">Training</div>
+      <div class="s-expand">
+        <div class="s-tag">PRACTICE</div>
+        <h2 class="s-title">TRAINING<br>MODE</h2>
+        <p class="s-desc">Practice combos &amp; spells<br>on a standing dummy.</p>
+        <button class="s-btn" onclick="go('training')">TRAIN NOW &nbsp;→</button>
+      </div>
+    </div>
+
+    <!-- 3: SURVIVAL Mode -->
+    <div class="strip" id="s-SURVIVAL"
+         style="--col:#f97316;--cover-bg:#120808"
+         data-scene="SURVIVAL">
+      <div class="s-cover"></div>
+      <div class="s-tint"></div>
+      <div class="s-game-title"><h1>STICK BRAWL</h1></div>
+      <div class="s-icon">◈</div>
+      <div class="s-label-v">SURVIVAL Mode</div>
+      <div class="s-expand">
+        <div class="s-tag">SURVIVAL</div>
+        <h2 class="s-title">SURVIVAL<br>MODE</h2>
+        <p class="s-desc">Face endless waves of enemies.<br>How long can you survive?</p>
+        <button class="s-btn" onclick="go('SURVIVAL')">ENTER SURVIVAL &nbsp;→</button>
+      </div>
+    </div>
+
+    <!-- 3: Versus 2P -->
+    <div class="strip" id="s-versus"
+         style="--col:#a78bfa;--cover-bg:#0e0820"
+         data-scene="versus">
+      <div class="s-cover"></div>
+      <div class="s-tint"></div>
+      <div class="s-game-title"><h1>STICK BRAWL</h1></div>
+      <div class="s-icon">◉</div>
+      <div class="s-label-v">Versus</div>
+      <div class="s-expand">
+        <div class="s-tag">2 PLAYER LOCAL</div>
+        <h2 class="s-title">VERSUS<br>MODE</h2>
+        <p class="s-desc">Challenge a friend locally.<br>Share the same keyboard.</p>
+        <button class="s-btn" onclick="go('versus')">1v1 NOW &nbsp;→</button>
+      </div>
+    </div>
+
+    <!-- 4: Settings -->
+    <div class="strip" id="s-settings"
+         style="--col:#22d3ee;--cover-bg:#060d15"
+         data-scene="settings">
+      <div class="s-cover"></div>
+      <div class="s-tint"></div>
+      <div class="s-game-title"><h1>STICK BRAWL</h1></div>
+      <div class="s-icon">⚙</div>
+      <div class="s-label-v">Settings</div>
+      <div class="s-expand">
+        <div class="s-tag">CONFIG</div>
+        <h2 class="s-title">SETTINGS</h2>
+        <p class="s-desc">Adjust AI difficulty,<br>chaos mode &amp; timer.</p>
+        <button class="s-btn" onclick="SB.navigate('settings.html')">CONFIGURE &nbsp;→</button>
+      </div>
+    </div>
+
+    <!-- 5: Report & Analysis -->
+    <div class="strip" id="s-report"
+         style="--col:#10b981;--cover-bg:#051209"
+         data-scene="report">
+      <div class="s-cover"></div>
+      <div class="s-tint"></div>
+      <div class="s-game-title"><h1>STICK BRAWL</h1></div>
+      <div class="s-icon">▦</div>
+      <div class="s-label-v">Report</div>
+      <div class="s-expand">
+        <div class="s-tag">STATISTICS</div>
+        <h2 class="s-title">REPORT &amp;<br>ANALYSIS</h2>
+        <p class="s-desc">View match hiSURVIVAL<br>&amp; performance stats.</p>
+        <button class="s-btn" onclick="SB.navigate('report.html')">VIEW STATS &nbsp;→</button>
+      </div>
+    </div>
+
+    <!-- 6: Exit -->
+    <div class="strip" id="s-exit"
+         style="--col:#f87171;--cover-bg:#100508"
+         data-scene="exit">
+      <div class="s-cover"></div>
+      <div class="s-tint"></div>
+      <div class="s-game-title"><h1>STICK BRAWL</h1></div>
+      <div class="s-icon">✕</div>
+      <div class="s-label-v">Exit</div>
+      <div class="s-expand">
+        <div class="s-tag">GOODBYE</div>
+        <h2 class="s-title">EXIT<br>GAME</h2>
+        <p class="s-desc">Come back anytime.<br>Progress is auto-saved.</p>
+        <button class="s-btn" onclick="exitGame()">EXIT &nbsp;→</button>
+      </div>
+    </div>
+
+  </div><!-- /strips -->
+
+  <!-- Music toggle -->
+  <button id="musicBtn">🎵 &nbsp;MUSIC</button>
+
+  <script src="js/shared.js"></script>
+  <script src="js/music.js"></script>
+  <script>
+  (function(){
+    'use strict';
+
+    /* ── Canvas setup ───────────────────────────── */
+    const bgCv=document.getElementById('bgCv'),   bgCtx=bgCv.getContext('2d');
+    const scCv=document.getElementById('sceneCv'),scCtx=scCv.getContext('2d');
+    const fxCv=document.getElementById('fxCv'),   fxCtx=fxCv.getContext('2d');
+    let W,H;
+    function resize(){W=bgCv.width=scCv.width=fxCv.width=innerWidth;H=bgCv.height=scCv.height=fxCv.height=innerHeight;}
+    resize(); addEventListener('resize',resize);
+    const T0=Date.now(); function sec(){return(Date.now()-T0)*.001;}
+
+    /* ── Mouse ──────────────────────────────────── */
+    let mx=W/2,my=H/2,nMx=0,nMy=0,ringX=W/2,ringY=H/2;
+    const dot=document.getElementById('c-dot'), ring=document.getElementById('c-ring');
+    addEventListener('mousemove',e=>{
+      mx=e.clientX;my=e.clientY;
+      nMx=(mx/W-.5)*2;nMy=(my/H-.5)*2;
+      dot.style.left=mx+'px';dot.style.top=my+'px';
+    });
+
+    /* ── Strip interaction ──────────────────────── */
+    const strips=document.querySelectorAll('.strip');
+    let activeStrip=document.getElementById('s-vs');
+    let activeScene='vs';
+
+    strips.forEach(strip=>{
+      strip.addEventListener('mouseenter',()=>{
+        strips.forEach(s=>s.classList.remove('active'));
+        strip.classList.add('active');
+        activeStrip=strip;
+        activeScene=strip.dataset.scene;
+        dot.classList.add('on'); ring.classList.add('on');
+      });
+      strip.addEventListener('mouseleave',()=>{
+        dot.classList.remove('on'); ring.classList.remove('on');
+      });
+    });
+
+    /* Restore default when mouse leaves container */
+    document.getElementById('strips').addEventListener('mouseleave',()=>{
+      strips.forEach(s=>s.classList.remove('active'));
+      document.getElementById('s-vs').classList.add('active');
+      activeStrip=document.getElementById('s-vs');
+      activeScene='vs';
+    });
+
+    /* ── Stars + Nebula (bgCv) ──────────────────── */
+    const STARS=Array.from({length:200},()=>({
+      ox:Math.random()*5000,oy:Math.random()*H*.88,
+      r:Math.random()*1.6+.2,tw:Math.random()*Math.PI*2,ts:.008+Math.random()*.02,d:Math.random()*.04+.01
+    }));
+    const NEBS=[
+      {ox:.14,oy:.3,r:280,c:'#4f46e5',sp:.000033,d:0,dp:.018},
+      {ox:.78,oy:.4,r:250,c:'#dc2626',sp:.000027,d:1.7,dp:.022},
+      {ox:.5, oy:.08,r:200,c:'#7c3aed',sp:.000041,d:3.2,dp:.014},
+    ];
+
+    function drawBG(ms){
+      bgCtx.clearRect(0,0,W,H);
+      const g=bgCtx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0,'#050810'); g.addColorStop(1,'#0d0820');
+      bgCtx.fillStyle=g; bgCtx.fillRect(0,0,W,H);
+      NEBS.forEach(n=>{
+        const nx=W*n.ox+Math.sin(ms*n.sp+n.d)*28-nMx*W*n.dp;
+        const ny=H*n.oy+Math.cos(ms*n.sp*.7+n.d)*20-nMy*H*n.dp;
+        const g2=bgCtx.createRadialGradient(nx,ny,0,nx,ny,n.r);
+        g2.addColorStop(0,n.c+'1e'); g2.addColorStop(1,'rgba(0,0,0,0)');
+        bgCtx.fillStyle=g2; bgCtx.fillRect(0,0,W,H);
+      });
+      STARS.forEach(s=>{
+        s.tw+=s.ts;
+        const px=s.ox%-nMx*W*s.d+W/2, py=s.oy-nMy*H*s.d;
+        const a=.14+Math.sin(s.tw)*.3;
+        bgCtx.save(); bgCtx.globalAlpha=Math.max(0,a); bgCtx.fillStyle='#e2e8f0';
+        bgCtx.beginPath(); bgCtx.arc(s.ox-nMx*W*s.d,s.oy-nMy*H*s.d,s.r,0,Math.PI*2); bgCtx.fill(); bgCtx.restore();
+      });
+    }
+
+    /* ── Scene drawing helpers ──────────────────── */
+    function ln(c,x1,y1,x2,y2){c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();}
+    function circ(c,x,y,r,fill,gl,gr){
+      if(gl){c.shadowBlur=gr||14;c.shadowColor=gl;}
+      c.beginPath();c.arc(x,y,r,0,Math.PI*2);
+      if(fill){c.fillStyle=fill;c.fill();}else c.stroke();
+      c.shadowBlur=0;
+    }
+    function bgFighter(c,x,gy,col,sc,fR,t,a){
+      const bob=Math.sin(t*2+x*.01)*3*sc;
+      c.save();c.globalAlpha=a;c.strokeStyle=col;c.fillStyle=col;
+      c.lineWidth=2.2*sc;c.lineCap='round';c.shadowBlur=16;c.shadowColor=col;
+      const dir=fR?1:-1;
+      circ(c,x,gy-48*sc+bob,8*sc,col);
+      ln(c,x,gy-40*sc+bob,x,gy-14*sc+bob);
+      ln(c,x,gy-34*sc+bob,x+dir*18*sc,gy-24*sc+bob);
+      ln(c,x,gy-34*sc+bob,x-dir*10*sc,gy-28*sc+bob);
+      ln(c,x,gy-14*sc+bob,x-8*sc,gy+bob);
+      ln(c,x,gy-14*sc+bob,x+8*sc,gy+bob);
+      c.shadowBlur=0;c.restore();
+    }
+
+    /* ── Scene alpha transitions ────────────────── */
+    const SA={vs:1,training:0,SURVIVAL:0,versus:0,settings:0,report:0,exit:0};
+    function updateSA(){
+      for(const k in SA){SA[k]+=(( k===activeScene?1:0)-SA[k])*.07;}
+    }
+
+    /* ── Draw scene for current strip ──────────── */
+    function drawScenes(t){
+      const r=activeStrip.getBoundingClientRect();
+      const cx=r.left+r.width/2;  // center of active strip
+      const gy=H*.73;
+
+      scCtx.clearRect(0,0,W,H);
+
+      /* VS AI ──────────────────────────────────── */
+      if(SA.vs>0.01){
+        const a=SA.vs;
+        scCtx.save(); scCtx.globalAlpha=a;
+        /* Blue wash */
+        const bw=scCtx.createLinearGradient(r.left,0,r.right,H);
+        bw.addColorStop(0,'rgba(79,70,229,.18)');bw.addColorStop(1,'rgba(0,0,0,0)');
+        scCtx.fillStyle=bw; scCtx.fillRect(0,0,W,H);
+        /* Ground */
+        const gl=scCtx.createLinearGradient(0,gy,W,gy);
+        gl.addColorStop(0,'rgba(99,102,241,0)');gl.addColorStop(.5,'rgba(99,102,241,.5)');gl.addColorStop(1,'rgba(99,102,241,0)');
+        scCtx.strokeStyle=gl;scCtx.lineWidth=1.5;ln(scCtx,0,gy,W,gy);
+        /* Spotlight pools */
+        [cx-r.width*.22, cx+r.width*.22].forEach((fx,i)=>{
+          const pg=scCtx.createRadialGradient(fx,gy,0,fx,gy,120);
+          pg.addColorStop(0,i===0?'rgba(99,102,241,.2)':'rgba(220,38,38,.2)');pg.addColorStop(1,'rgba(0,0,0,0)');
+          scCtx.fillStyle=pg;scCtx.fillRect(fx-120,gy-35,240,90);
+        });
+        /* Fighters */
+        bgFighter(scCtx,cx-r.width*.22,gy,'#818cf8',.82,true,t,.8);
+        bgFighter(scCtx,cx+r.width*.22,gy,'#f87171',.82,false,t,.8);
+        /* Energy beam */
+        const ba=.3+Math.sin(t*6)*.15;
+        scCtx.globalAlpha=a*ba; scCtx.strokeStyle='#818cf8'; scCtx.lineWidth=1.8;
+        scCtx.setLineDash([8,7]); scCtx.shadowBlur=14; scCtx.shadowColor='#4f46e5';
+        ln(scCtx,cx-r.width*.16,gy-28,cx+r.width*.16,gy-28);
+        scCtx.setLineDash([]);scCtx.shadowBlur=0;
+        scCtx.restore();
+      }
+
+      /* TRAINING ──────────────────────────────── */
+      if(SA.training>0.01){
+        const a=SA.training;
+        scCtx.save(); scCtx.globalAlpha=a;
+        // Amber tint
+        const tg=scCtx.createRadialGradient(cx,H*.5,40,cx,H*.5,400);
+        tg.addColorStop(0,'rgba(245,158,11,.12)');tg.addColorStop(1,'rgba(0,0,0,0)');
+        scCtx.fillStyle=tg;scCtx.fillRect(0,0,W,H);
+        // Ground
+        scCtx.strokeStyle='rgba(245,158,11,.22)';scCtx.lineWidth=1.5;ln(scCtx,r.left,gy,r.right,gy);
+        // Bullseye target (right side)
+        const tcx=cx+r.width*.2, tcy=gy-85;
+        [50,34,20,8].forEach((rad,i)=>{
+          const pulse=1+Math.sin(t*2.2+i*.6)*.07;
+          scCtx.globalAlpha=a*(i===3?.85:.32-i*.06);
+          scCtx.strokeStyle='#f59e0b';scCtx.lineWidth=i===3?2:1.2;
+          scCtx.beginPath();scCtx.arc(tcx,tcy,rad*pulse,0,Math.PI*2);scCtx.stroke();
+        });
+        scCtx.globalAlpha=a*.15;scCtx.strokeStyle='#f59e0b';scCtx.lineWidth=.8;
+        ln(scCtx,tcx,tcy-58,tcx,tcy+58);ln(scCtx,tcx-58,tcy,tcx+58,tcy);
+        // Dummy / standing stick figure (right)
+        scCtx.globalAlpha=a*.5;scCtx.strokeStyle='rgba(245,158,11,.6)';scCtx.lineWidth=2;scCtx.lineCap='round';
+        circ(scCtx,tcx,gy-56,9,'rgba(245,158,11,.4)');
+        ln(scCtx,tcx,gy-47,tcx,gy-18);
+        ln(scCtx,tcx,gy-38,tcx-14,gy-30);ln(scCtx,tcx,gy-38,tcx+14,gy-30);
+        ln(scCtx,tcx,gy-18,tcx-9,gy);ln(scCtx,tcx,gy-18,tcx+9,gy);
+        // P1 fighter (left, attacking pose)
+        scCtx.globalAlpha=a*.85;
+        bgFighter(scCtx,cx-r.width*.2,gy,'#818cf8',.85,true,t,.85);
+        // Sparks flying toward target
+        for(let i=0;i<6;i++){
+          const frac=((t*.8+i*.18)%1);
+          const sx=(cx-r.width*.1)+(tcx-(cx-r.width*.1))*frac;
+          const sy=(gy-28)+Math.sin(frac*Math.PI)*-28;
+          scCtx.globalAlpha=a*(1-frac)*.75;
+          scCtx.fillStyle='#f59e0b';scCtx.shadowBlur=8;scCtx.shadowColor='#f59e0b';
+          scCtx.beginPath();scCtx.arc(sx,sy,3,0,Math.PI*2);scCtx.fill();
+          scCtx.shadowBlur=0;
+        }
+        // Watermark
+        scCtx.globalAlpha=a*.04;scCtx.fillStyle='#f59e0b';
+        scCtx.font=`900 ${Math.max(12,r.width*.12)}px Segoe UI`;scCtx.textAlign='center';
+        scCtx.fillText('TRAIN',cx,H*.55);
+        scCtx.restore();
+      }
+
+      /* SURVIVAL ──────────────────────────────────── */
+      if(SA.SURVIVAL>0.01){
+        const a=SA.SURVIVAL;
+        scCtx.save(); scCtx.globalAlpha=a;
+        const rw=scCtx.createLinearGradient(r.right,0,r.left,H);
+        rw.addColorStop(0,'rgba(249,115,22,.16)');rw.addColorStop(1,'rgba(0,0,0,0)');
+        scCtx.fillStyle=rw;scCtx.fillRect(0,0,W,H);
+        scCtx.strokeStyle='rgba(249,115,22,.3)';scCtx.lineWidth=1.5;ln(scCtx,0,gy,W,gy);
+        const march=(t*.06)%.2;
+        [{ox:.88,sc:.55},{ox:.76,sc:.65},{ox:.64,sc:.75},{ox:.52,sc:.82},{ox:.40,sc:.88}].forEach((e,i)=>{
+          const ex=r.left+(e.ox-march-i*.006)*r.width;
+          const wb=Math.sin(t*3.5+i*.8)*4*e.sc;
+          bgFighter(scCtx,ex,gy+wb,'rgba(220,38,38,.75)',e.sc,false,t,(.45+e.sc*.5)*a);
+        });
+        /* Faint watermark */
+        scCtx.globalAlpha=a*.05;scCtx.fillStyle='#ef4444';
+        scCtx.font=`900 ${r.width*.18}px Segoe UI`;scCtx.textAlign='center';
+        scCtx.fillText('SURVIVAL',cx,H*.58);
+        scCtx.restore();
+      }
+
+      /* VERSUS ─────────────────────────────────── */
+      if(SA.versus>0.01){
+        const a=SA.versus;
+        scCtx.save(); scCtx.globalAlpha=a;
+        /* Split tints */
+        const lt=scCtx.createLinearGradient(r.left,0,cx,0);
+        lt.addColorStop(0,'rgba(79,70,229,.2)');lt.addColorStop(1,'rgba(79,70,229,0)');
+        scCtx.fillStyle=lt;scCtx.fillRect(r.left,0,cx-r.left,H);
+        const rt=scCtx.createLinearGradient(r.right,0,cx,0);
+        rt.addColorStop(0,'rgba(220,38,38,.2)');rt.addColorStop(1,'rgba(220,38,38,0)');
+        scCtx.fillStyle=rt;scCtx.fillRect(cx,0,r.right-cx,H);
+        scCtx.strokeStyle='rgba(124,58,237,.3)';scCtx.lineWidth=1.5;ln(scCtx,0,gy,W,gy);
+        /* Centre divider */
+        scCtx.globalAlpha=a*(.2+Math.sin(t*3)*.08);
+        scCtx.strokeStyle='#a78bfa';scCtx.lineWidth=1.2;scCtx.setLineDash([5,8]);
+        ln(scCtx,cx,H*.12,cx,gy);scCtx.setLineDash([]);scCtx.globalAlpha=a;
+        bgFighter(scCtx,cx-r.width*.25,gy,'#818cf8',.84,true, t+.5,.82);
+        bgFighter(scCtx,cx+r.width*.25,gy,'#f87171',.84,false,t,   .82);
+        /* Lightning flash */
+        if(Math.sin(t*1.8)>.82){
+          scCtx.globalAlpha=a*(.5+Math.sin(t*9)*.3);
+          scCtx.strokeStyle='#c4b5fd';scCtx.lineWidth=1.5;scCtx.shadowBlur=14;scCtx.shadowColor='#7c3aed';
+          let lx=cx-r.width*.2,ly=gy-32;
+          scCtx.beginPath();scCtx.moveTo(lx,ly);
+          for(let i=0;i<5;i++){lx+=r.width*.08+(Math.random()-.5)*20;ly+=(Math.random()-.5)*18;scCtx.lineTo(lx,ly);}
+          scCtx.lineTo(cx+r.width*.2,gy-32);scCtx.stroke();scCtx.shadowBlur=0;
+        }
+        /* P1 P2 labels */
+        scCtx.globalAlpha=a*.12;
+        [['P1','#818cf8',cx-r.width*.32],['P2','#f87171',cx+r.width*.32]].forEach(([l,col,lx])=>{
+          scCtx.fillStyle=col;scCtx.font=`900 ${r.width*.18}px Segoe UI`;scCtx.textAlign='center';
+          scCtx.fillText(l,lx,H*.42);
+        });
+        scCtx.restore();
+      }
+
+      /* SETTINGS ───────────────────────────────── */
+      if(SA.settings>0.01){
+        const a=SA.settings;
+        scCtx.save(); scCtx.globalAlpha=a;
+        const ct=scCtx.createRadialGradient(cx,H*.4,30,cx,H*.4,500);
+        ct.addColorStop(0,'rgba(6,182,212,.14)');ct.addColorStop(1,'rgba(0,0,0,0)');
+        scCtx.fillStyle=ct;scCtx.fillRect(0,0,W,H);
+        /* Hex grid */
+        scCtx.strokeStyle='rgba(6,182,212,.12)';scCtx.lineWidth=.8;
+        const hw=38;
+        for(let row=0;row<10;row++) for(let col=0;col<20;col++){
+          const hx=r.left+col*hw*1.74+(row%2)*hw*.87;
+          const hy=row*hw*.83+50;
+          scCtx.beginPath();
+          for(let i=0;i<6;i++){const ang=i*Math.PI/3-Math.PI/6;scCtx.lineTo(hx+18*Math.cos(ang),hy+18*Math.sin(ang));}
+          scCtx.closePath();scCtx.stroke();
+        }
+        /* Rotating gear */
+        scCtx.save();scCtx.globalAlpha=a*.22;scCtx.translate(cx,H*.45);scCtx.rotate(t*.5);
+        scCtx.strokeStyle='#22d3ee';scCtx.lineWidth=2;scCtx.shadowBlur=12;scCtx.shadowColor='#22d3ee';
+        scCtx.beginPath();
+        for(let i=0;i<24;i++){const ang=i*Math.PI/12;const rr=i%2===0?90:72;scCtx.lineTo(Math.cos(ang)*rr,Math.sin(ang)*rr);}
+        scCtx.closePath();scCtx.stroke();
+        scCtx.beginPath();scCtx.arc(0,0,40,0,Math.PI*2);scCtx.stroke();
+        scCtx.shadowBlur=0;scCtx.restore();
+        /* Scan lines */
+        for(let i=0;i<4;i++){
+          const sy=((t*55+i*220)%H);
+          const sg=scCtx.createLinearGradient(0,sy,W,sy);
+          sg.addColorStop(0,'rgba(34,211,238,0)');sg.addColorStop(.5,'rgba(34,211,238,.06)');sg.addColorStop(1,'rgba(34,211,238,0)');
+          scCtx.fillStyle=sg;scCtx.fillRect(0,sy,W,1.5);
+        }
+        scCtx.restore();
+      }
+
+      /* REPORT ────────────────────────────────── */
+      if(SA.report>0.01){
+        const a=SA.report;
+        scCtx.save(); scCtx.globalAlpha=a;
+        const rg=scCtx.createRadialGradient(cx,H*.45,40,cx,H*.45,420);
+        rg.addColorStop(0,'rgba(16,185,129,.13)');rg.addColorStop(1,'rgba(0,0,0,0)');
+        scCtx.fillStyle=rg;scCtx.fillRect(0,0,W,H);
+        /* Grid */
+        scCtx.strokeStyle='rgba(16,185,129,.07)';scCtx.lineWidth=.8;
+        for(let i=0;i<7;i++){const gy2=H*.25+i*(H*.5/6);ln(scCtx,r.left,gy2,r.right,gy2);}
+        for(let i=0;i<6;i++){const gx=r.left+i*(r.width/5);ln(scCtx,gx,H*.2,gx,H*.8);}
+        /* Animated bars */
+        const bH=[.65,.82,.46,.9,.6], bC=['#10b981','#34d399','#059669','#6ee7b7','#10b981'];
+        const bw=r.width*.072;
+        for(let i=0;i<5;i++){
+          const pulse=0.5+0.5*Math.sin(t*1.2+i*.9);
+          const bh=bH[i]*H*.42*pulse;
+          const bx=r.left+r.width*.1+i*(r.width*.185);
+          const by=H*.75-bh;
+          scCtx.globalAlpha=a*.22;scCtx.fillStyle=bC[i];scCtx.fillRect(bx,by,bw,bh);
+          scCtx.globalAlpha=a*.6;scCtx.strokeStyle=bC[i];scCtx.lineWidth=1.5;scCtx.strokeRect(bx,by,bw,bh);
+          circ(scCtx,bx+bw/2,by,3,bC[i],bC[i],10);
+        }
+        /* Line graph */
+        scCtx.beginPath();scCtx.globalAlpha=a*.5;
+        scCtx.strokeStyle='#34d399';scCtx.lineWidth=2;scCtx.shadowBlur=12;scCtx.shadowColor='#10b981';
+        for(let i=0;i<=9;i++){
+          const px=r.left+i*(r.width/9);
+          const py=H*.48+Math.sin(t+i*.7)*H*.09+Math.cos(t*.6+i*.5)*H*.05;
+          i===0?scCtx.moveTo(px,py):scCtx.lineTo(px,py);
+        }
+        scCtx.stroke();scCtx.shadowBlur=0;
+        /* Watermark */
+        scCtx.globalAlpha=a*.04;scCtx.fillStyle='#10b981';
+        scCtx.font=`900 ${Math.max(12,r.width*.14)}px Segoe UI`;scCtx.textAlign='center';
+        scCtx.fillText('STATS',cx,H*.55);
+        scCtx.restore();
+      }
+
+      /* EXIT ───────────────────────────────────── */
+      if(SA.exit>0.01){
+        const a=SA.exit;
+        scCtx.save();
+        scCtx.globalAlpha=a*.55;scCtx.fillStyle='#000';scCtx.fillRect(0,0,W,H);
+        const vg=scCtx.createRadialGradient(W/2,H/2,H*.12,W/2,H/2,H*.85);
+        vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(220,38,38,.4)');
+        scCtx.globalAlpha=a;scCtx.fillStyle=vg;scCtx.fillRect(0,0,W,H);
+        scCtx.globalAlpha=a*(.2+Math.sin(t*1.5)*.1);
+        scCtx.fillStyle='#f87171';scCtx.font=`900 ${Math.max(12,r.width*.08)}px Segoe UI`;
+        scCtx.textAlign='center';scCtx.fillText('SEE YOU NEXT TIME',cx,H/2);
+        scCtx.restore();
+      }
+    }
+
+    /* ── FX Canvas: particles + cursor ─────────── */
+    const parts=[],ripples=[];
+    function spawnParts(x,y,col,n){
+      for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*4;
+        parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1.5,r:Math.random()*3+.6,c:col,life:0,max:28+Math.random()*22,grav:.08});}
+    }
+    function spawnRipple(x,y,col){ripples.push({x,y,r:0,maxR:95,spd:6,col,lw:2});}
+
+    /* Strip click ripples */
+    strips.forEach(strip=>{
+      const col=strip.style.getPropertyValue('--col')||'#818cf8';
+      strip.addEventListener('click',e=>{
+        spawnRipple(e.clientX,e.clientY,col);
+        spawnParts(e.clientX,e.clientY,col,14);
+      });
+      strip.addEventListener('mouseenter',()=>{
+        const r=strip.getBoundingClientRect();
+        spawnParts(r.left+r.width/2,r.top+r.height/2,col,6);
+      });
+    });
+
+    /* ── Main loop ──────────────────────────────── */
+    function frame(){
+      const t=sec(), ms=Date.now()-T0;
+      drawBG(ms);
+      updateSA();
+      drawScenes(t);
+
+      fxCtx.clearRect(0,0,W,H);
+
+      /* Particles */
+      for(let i=parts.length-1;i>=0;i--){
+        const p=parts[i];p.x+=p.vx;p.y+=p.vy;p.vy+=p.grav;p.life++;
+        if(p.life>p.max){parts.splice(i,1);continue;}
+        const a=(1-p.life/p.max)*.9;
+        fxCtx.save();fxCtx.globalAlpha=a;fxCtx.fillStyle=p.c;fxCtx.shadowBlur=8;fxCtx.shadowColor=p.c;
+        fxCtx.beginPath();fxCtx.arc(p.x,p.y,p.r,0,Math.PI*2);fxCtx.fill();fxCtx.restore();
+      }
+
+      /* Ripples */
+      for(let i=ripples.length-1;i>=0;i--){
+        const r=ripples[i];r.r+=r.spd;
+        if(r.r>=r.maxR){ripples.splice(i,1);continue;}
+        const a=(1-r.r/r.maxR)*.8;
+        fxCtx.save();fxCtx.globalAlpha=a;fxCtx.strokeStyle=r.col;fxCtx.lineWidth=r.lw;
+        fxCtx.shadowBlur=12;fxCtx.shadowColor=r.col;
+        fxCtx.beginPath();fxCtx.arc(r.x,r.y,r.r,0,Math.PI*2);fxCtx.stroke();fxCtx.restore();
+      }
+
+      /* Cursor ring lag */
+      ringX+=(mx-ringX)*.14;ringY+=(my-ringY)*.14;
+      ring.style.left=ringX+'px';ring.style.top=ringY+'px';
+
+      requestAnimationFrame(frame);
+    }
+    frame();
+
+  })();
+
+  /* ── Music toggle ───────────────────────────── */
+  (function () {
+    const btn = document.getElementById('musicBtn');
+    let on = false;
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      on = !on;
+      if (on) {
+        MU.menu();
+        sessionStorage.setItem('sbMusicOn', '1');
+        btn.textContent = '🔇  MUSIC';
+        btn.classList.add('on');
+      } else {
+        MU.stop(0.4);
+        sessionStorage.removeItem('sbMusicOn');
+        btn.textContent = '🎵  MUSIC';
+        btn.classList.remove('on');
+      }
+    });
+  })();
+
+  function go(mode){ MU.stop(0.38); SB.setMode(mode); SB.navigate('character-select.html'); }
+  function exitGame(){
+    MU.stop(0.5);
+    document.body.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;
+      justify-content:center;height:100vh;gap:14px;color:#334155;
+      font-family:Segoe UI;background:#050810">
+      <p style="font-size:18px;font-weight:700;color:#475569">Thanks for playing!</p>
+      <p style="font-size:12px">Close this tab to exit.</p>
+      <button onclick="location.href='intro.html'" style="margin-top:10px;padding:8px 22px;
+        background:rgba(79,70,229,.2);border:1.5px solid rgba(79,70,229,.4);border-radius:8px;
+        color:#818cf8;font-size:12px;font-weight:700">← Back</button></div>`;
+  }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STICK BRAWL — Battle</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Battle page layout */
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: #050810;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      font-family: 'Segoe UI', sans-serif;
+      animation: bFadeIn 0.35s ease forwards;
+    }
+    @keyframes bFadeIn { from{opacity:0} to{opacity:1} }
+    body.out { animation: bFadeOut 0.35s ease forwards; }
+    @keyframes bFadeOut { from{opacity:1} to{opacity:0} }
+
+    /* ── Battle area: flex row to accommodate sidebar ── */
+    #battleArea {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      flex: 1;
+      overflow: hidden;
+    }
+    /* Canvas shrinks when panel opens */
+    #C {
+      width: 1100px;
+      height: 620px;
+      flex-shrink: 0;
+      transition: width .46s cubic-bezier(.22,1,.36,1), height .46s cubic-bezier(.22,1,.36,1), border-radius .46s ease;
+    }
+    #battleArea.fp-open #C { width: 800px; height: 451px; border-radius: 8px; }
+
+    /* ── Fuzzy Sidebar ── */
+    #fuzzyPanel {
+      flex-shrink: 0;
+      width: 0;
+      height: 620px;
+      overflow: hidden;
+      transition: width .46s cubic-bezier(.22,1,.36,1), height .46s cubic-bezier(.22,1,.36,1);
+      background: rgba(4,6,14,.98);
+      border-left: 1px solid rgba(99,102,241,.22);
+    }
+    #battleArea.fp-open #fuzzyPanel { width: 352px; height: 451px; }
+    #fpInner {
+      width: 352px; height: 100%;
+      overflow-y: auto; overflow-x: hidden;
+      scrollbar-width: thin; scrollbar-color: #1e293b transparent;
+    }
+    #fpInner::-webkit-scrollbar { width: 4px; }
+    #fpInner::-webkit-scrollbar-track { background: transparent; }
+    #fpInner::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+    .fp-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 13px 9px;
+      background: rgba(6,9,20,.97);
+      border-bottom: 1px solid rgba(99,102,241,.2);
+      position: sticky; top: 0; z-index: 2;
+    }
+    .fp-hdr-l { display: flex; align-items: center; gap: 9px; }
+    .fp-led {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #22c55e; box-shadow: 0 0 8px #22c55e;
+      animation: fpLed 2s ease-in-out infinite;
+    }
+    @keyframes fpLed { 0%,100%{opacity:1;box-shadow:0 0 8px #22c55e} 50%{opacity:.5;box-shadow:0 0 3px #22c55e} }
+    .fp-ttl { font-size:11px; font-weight:900; letter-spacing:2.5px; color:#e2e8f0; }
+    .fp-sub { font-size:8px; color:#334155; letter-spacing:1px; margin-top:1px; }
+    .fp-badge {
+      font-size: 9px; font-weight: 900; letter-spacing: 2px;
+      padding: 3px 9px; border-radius: 5px;
+      border: 1.5px solid currentColor;
+      transition: color .15s, box-shadow .15s;
+    }
+    .fp-tabs {
+      display: flex; gap: 4px; padding: 7px 10px;
+      background: rgba(5,7,18,.9);
+      border-bottom: 1px solid rgba(51,65,85,.3);
+    }
+    .fp-tab {
+      flex: 1; padding: 5px 0;
+      background: transparent;
+      border: 1px solid rgba(51,65,85,.45);
+      border-radius: 5px;
+      color: #475569; font-size: 8px; font-weight: 900; letter-spacing: 1.5px;
+      cursor: pointer; transition: all .2s;
+    }
+    .fp-tab.fp-ton { background: rgba(79,70,229,.18); border-color: rgba(99,102,241,.55); color: #818cf8; box-shadow: 0 0 8px rgba(79,70,229,.25); }
+    .fp-tab:not(.fp-ton):hover { border-color: #475569; color: #64748b; }
+    .fp-card { margin: 7px 9px; background: rgba(12,18,36,.7); border: 1px solid rgba(51,65,85,.35); border-radius: 8px; padding: 9px 11px; }
+    .fp-cttl { font-size: 8px; font-weight: 900; letter-spacing: 2px; color: #334155; margin-bottom: 8px; }
+    .fp-cog-track {
+      position: relative; height: 22px; border-radius: 5px;
+      background: linear-gradient(90deg,rgba(59,130,246,.25) 0%,rgba(59,130,246,.25) 33%,rgba(245,158,11,.25) 33%,rgba(245,158,11,.25) 66%,rgba(239,68,68,.25) 66%);
+      border: 1px solid rgba(51,65,85,.4); display: flex; align-items: center; overflow: visible; margin-bottom: 3px;
+    }
+    .fp-cog-z { flex:1; text-align:center; font-size:8px; font-weight:900; letter-spacing:.5px; pointer-events:none; }
+    .fp-cog-needle {
+      position: absolute; top: -6px; left: 50%;
+      width: 2px; height: 34px;
+      background: #fff; border-radius: 2px; box-shadow: 0 0 7px #fff,0 0 14px rgba(255,255,255,.4);
+      transform: translateX(-50%); transition: left .09s linear;
+    }
+    .fp-cog-num { font-size:12px; font-weight:900; text-align:center; margin-top:3px; transition:color .15s; }
+    .fp-inp-list { display:flex; flex-direction:column; gap:5px; }
+    .fp-inp { display:flex; align-items:center; gap:6px; }
+    .fp-ilbl { font-size:8px; font-weight:900; letter-spacing:.5px; width:38px; flex-shrink:0; }
+    .fp-bbg { flex:1; height:8px; background:rgba(15,23,42,.9); border-radius:4px; overflow:hidden; border:1px solid rgba(51,65,85,.35); }
+    .fp-bfill { height:100%; width:0%; border-radius:4px; background:var(--c,#818cf8); box-shadow:0 0 5px var(--c,#818cf8); transition:width .08s linear; }
+    .fp-inum { font-size:9px; font-weight:700; width:36px; text-align:right; flex-shrink:0; color:#475569; }
+    .fp-mg { margin-bottom:7px; }
+    .fp-mg:last-child { margin-bottom:0; }
+    .fp-mg-lbl { font-size:8px; font-weight:900; letter-spacing:1.5px; margin-bottom:3px; }
+    .fp-mg-terms { display:flex; flex-direction:column; gap:2px; }
+    .fp-mt { display:flex; align-items:center; gap:5px; }
+    .fp-mt-lbl { font-size:7.5px; color:#475569; width:42px; flex-shrink:0; }
+    .fp-bbg.sm { height:6px; }
+    .fp-mt-v { font-size:8px; font-weight:700; color:#475569; width:26px; text-align:right; flex-shrink:0; }
+    .fp-rules { display:flex; flex-direction:column; gap:3px; max-height:108px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#1e293b transparent; }
+    .fp-rule { display:flex; align-items:center; gap:5px; padding:3px 5px; background:rgba(15,23,42,.5); border-radius:4px; border-left:2px solid; }
+    .fp-rb { width:44px; height:5px; background:rgba(30,41,59,.9); border-radius:3px; flex-shrink:0; overflow:hidden; }
+    .fp-rbf { height:100%; border-radius:3px; }
+    .fp-rw { font-size:8px; font-weight:700; width:32px; flex-shrink:0; }
+    .fp-rl { font-size:7.5px; color:#475569; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .fp-rcnt { display:inline-block; background:rgba(79,70,229,.2); color:#818cf8; font-size:8px; padding:1px 5px; border-radius:8px; margin-left:5px; font-weight:900; }
+    .fp-foot { text-align:center; font-size:8.5px; color:#1e293b; padding:9px 10px 11px; border-top:1px solid rgba(51,65,85,.25); margin-top:4px; letter-spacing:.5px; }
+    .fp-foot kbd { background:rgba(30,41,59,.8); border:1px solid #334155; border-radius:3px; padding:1px 5px; font-size:8px; color:#475569; font-family:monospace; }
+    #fpCanvas { display:none; margin:6px 11px; border-radius:6px; background:#070c18; }
+    #fpInner.view-chart #fpBrain  { display:none; }
+    #fpInner.view-chart #fpCanvas { display:block; }
+  </style>
+</head>
+<body>
+
+  <!-- Battle layout: canvas + fuzzy sidebar -->
+  <div id="battleArea">
+    <canvas id="C" width="1100" height="620"></canvas>
+    <div id="fuzzyPanel">
+      <div id="fpInner">
+        <div class="fp-hdr">
+          <div class="fp-hdr-l">
+            <div class="fp-led"></div>
+            <div><div class="fp-ttl">AI FUZZY ENGINE</div><div class="fp-sub">Fuzzy Inference System v2</div></div>
+          </div>
+          <div class="fp-badge" id="fpBadge">–</div>
+        </div>
+        <div class="fp-tabs">
+          <button class="fp-tab" onclick="window._fpTab(1)">BRAIN</button>
+          <button class="fp-tab" onclick="window._fpTab(2)">MF CHARTS</button>
+          <button class="fp-tab" onclick="window._fpTab(3)">SYSTEM</button>
+        </div>
+        <canvas id="fpCanvas" width="330" height="420"></canvas>
+        <div id="fpBrain">
+        <div class="fp-card">
+          <div class="fp-cttl">DEFUZZIFICATION  ·  COG OUTPUT</div>
+          <div class="fp-cog-track">
+            <div class="fp-cog-z" style="color:#3b82f6">DEFEND</div>
+            <div class="fp-cog-z" style="color:#f59e0b">HARASS</div>
+            <div class="fp-cog-z" style="color:#ef4444">MELEE</div>
+            <div class="fp-cog-needle" id="fpNeedle"></div>
+          </div>
+          <div class="fp-cog-num" id="fpCOGNum">COG = –</div>
+        </div>
+        <div class="fp-card">
+          <div class="fp-cttl">CRISP INPUTS</div>
+          <div class="fp-inp-list">
+            <div class="fp-inp"><span class="fp-ilbl" style="color:#f59e0b">DIST</span><div class="fp-bbg"><div class="fp-bfill" id="bIDist" style="--c:#f59e0b"></div></div><span class="fp-inum" id="vIDist">–</span></div>
+            <div class="fp-inp"><span class="fp-ilbl" style="color:#22c55e">HP</span><div class="fp-bbg"><div class="fp-bfill" id="bIHP" style="--c:#22c55e"></div></div><span class="fp-inum" id="vIHP">–</span></div>
+            <div class="fp-inp"><span class="fp-ilbl" style="color:#818cf8">MANA</span><div class="fp-bbg"><div class="fp-bfill" id="bIMana" style="--c:#818cf8"></div></div><span class="fp-inum" id="vIMana">–</span></div>
+            <div class="fp-inp"><span class="fp-ilbl" style="color:#ef4444">THREAT</span><div class="fp-bbg"><div class="fp-bfill" id="bIThreat" style="--c:#ef4444"></div></div><span class="fp-inum" id="vIThreat">–</span></div>
+          </div>
+        </div>
+        <div class="fp-card">
+          <div class="fp-cttl">MEMBERSHIP DEGREES</div>
+          <div class="fp-mg">
+            <div class="fp-mg-lbl" style="color:#f59e0b">DISTANCE</div>
+            <div class="fp-mg-terms">
+              <div class="fp-mt"><span class="fp-mt-lbl">CLOSE</span><div class="fp-bbg sm"><div class="fp-bfill" id="mDC" style="--c:#f59e0b"></div></div><span class="fp-mt-v" id="vDC">0.00</span></div>
+              <div class="fp-mt"><span class="fp-mt-lbl">MEDIUM</span><div class="fp-bbg sm"><div class="fp-bfill" id="mDM" style="--c:#f59e0b"></div></div><span class="fp-mt-v" id="vDM">0.00</span></div>
+              <div class="fp-mt"><span class="fp-mt-lbl">FAR</span><div class="fp-bbg sm"><div class="fp-bfill" id="mDF" style="--c:#f59e0b"></div></div><span class="fp-mt-v" id="vDF">0.00</span></div>
+            </div>
+          </div>
+          <div class="fp-mg">
+            <div class="fp-mg-lbl" style="color:#22c55e">HEALTH</div>
+            <div class="fp-mg-terms">
+              <div class="fp-mt"><span class="fp-mt-lbl">LOW</span><div class="fp-bbg sm"><div class="fp-bfill" id="mHL" style="--c:#22c55e"></div></div><span class="fp-mt-v" id="vHL">0.00</span></div>
+              <div class="fp-mt"><span class="fp-mt-lbl">MEDIUM</span><div class="fp-bbg sm"><div class="fp-bfill" id="mHM" style="--c:#22c55e"></div></div><span class="fp-mt-v" id="vHM">0.00</span></div>
+              <div class="fp-mt"><span class="fp-mt-lbl">HIGH</span><div class="fp-bbg sm"><div class="fp-bfill" id="mHH" style="--c:#22c55e"></div></div><span class="fp-mt-v" id="vHH">0.00</span></div>
+            </div>
+          </div>
+          <div class="fp-mg">
+            <div class="fp-mg-lbl" style="color:#818cf8">MANA</div>
+            <div class="fp-mg-terms">
+              <div class="fp-mt"><span class="fp-mt-lbl">LOW</span><div class="fp-bbg sm"><div class="fp-bfill" id="mML" style="--c:#818cf8"></div></div><span class="fp-mt-v" id="vML">0.00</span></div>
+              <div class="fp-mt"><span class="fp-mt-lbl">MEDIUM</span><div class="fp-bbg sm"><div class="fp-bfill" id="mMM" style="--c:#818cf8"></div></div><span class="fp-mt-v" id="vMM">0.00</span></div>
+              <div class="fp-mt"><span class="fp-mt-lbl">HIGH</span><div class="fp-bbg sm"><div class="fp-bfill" id="mMH" style="--c:#818cf8"></div></div><span class="fp-mt-v" id="vMH">0.00</span></div>
+            </div>
+          </div>
+          <div class="fp-mg">
+            <div class="fp-mg-lbl" style="color:#ef4444">THREAT</div>
+            <div class="fp-mg-terms">
+              <div class="fp-mt"><span class="fp-mt-lbl">NONE</span><div class="fp-bbg sm"><div class="fp-bfill" id="mTN" style="--c:#ef4444"></div></div><span class="fp-mt-v" id="vTN">0.00</span></div>
+              <div class="fp-mt"><span class="fp-mt-lbl">MOD</span><div class="fp-bbg sm"><div class="fp-bfill" id="mTM" style="--c:#ef4444"></div></div><span class="fp-mt-v" id="vTM">0.00</span></div>
+              <div class="fp-mt"><span class="fp-mt-lbl">HIGH</span><div class="fp-bbg sm"><div class="fp-bfill" id="mTH" style="--c:#ef4444"></div></div><span class="fp-mt-v" id="vTH">0.00</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="fp-card">
+          <div class="fp-cttl">FIRED RULES<span class="fp-rcnt" id="fpRC">0</span></div>
+          <div class="fp-rules" id="fpRules"></div>
+        </div>
+        <div class="fp-foot"><kbd>P</kbd> cycle views &nbsp;·&nbsp; click tab to switch</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls bar -->
+  <div id="bar">
+    <div>
+      P1: <span class="k">A/D</span> Move &nbsp;
+      <span class="k">W</span> Jump &nbsp;
+      <span class="k">S</span> Parry &nbsp;
+      <span class="k">Space</span> Melee &nbsp;
+      <span class="k">F</span> Burst &nbsp;
+      <span class="k">E</span> Blink &nbsp;
+      <span class="k">J</span> BigFire &nbsp;
+      <span class="k">K</span> Ice &nbsp;
+      <span class="k">G</span> Heal &nbsp;
+      <span class="k">I</span> ULT &nbsp;|&nbsp;
+      2×A/D = Dash
+    </div>
+    <div style="display:flex;gap:5px">
+      <button class="btn" id="chaosBtn">Chaos OFF</button>
+      <button class="btn" id="fuzzyBtn">Fuzzy OFF</button>
+      <button class="btn" onclick="goMenu()">⌂ Menu</button>
+    </div>
+    <div>
+      P2: <span class="k">Arrows</span> Move &nbsp;
+      <span class="k">↓</span> Shield &nbsp;
+      <span class="k">Enter</span> Melee &nbsp;
+      <span class="k">1</span> Fire &nbsp;
+      <span class="k">2</span> Ice &nbsp;
+      <span class="k">3</span> Heal &nbsp;
+      <span class="k">4</span> Ult
+    </div>
+  </div>
+
+  <!-- ── Game engine (load order matters) ── -->
+  <script src="js/shared.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/fighter.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/combat.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/main.js"></script>
+
+  <!-- ── Battle initialiser ── -->
+  <script>
+    function goMenu() {
+      MU.stop(0.35);
+      document.body.classList.add('out');
+      setTimeout(() => { window.location.href = 'main-menu.html'; }, 360);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Read settings
+      const cfg = SB.getSettings();
+      chaosMode = cfg.chaos || false;
+      window._aiDiffMultiplier = { easy:14, medium:7, hard:4 }[cfg.difficulty] || 7;
+
+      // Read selections
+      p1CharIdx = SB.getP1();
+      p2CharIdx = SB.getP2();
+      const _savedMap = SB.getMap();
+      mapIdx = (_savedMap === -1) ? Math.floor(Math.random() * MAPS.length) : _savedMap;
+      p1Locked  = true;
+      p2Locked  = true;
+
+      // Set game mode
+      const rawMode = SB.getMode();
+      gameMode = rawMode === 'story' ? 'survival' : 'vs';
+      vsAI     = rawMode !== 'versus';
+
+      // Start battle music if enabled
+      if (sessionStorage.getItem('sbMusicOn')) {
+        MU.battle(mapIdx);
+      }
+
+      // Start
+      beginGame();
+    });
+  </script>
+
+</body>
+</html>

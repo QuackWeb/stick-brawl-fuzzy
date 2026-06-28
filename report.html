@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STICK BRAWL — Report &amp; Analysis</title>
+  <link rel="stylesheet" href="css/pages.css">
+  <style>
+    html, body { overflow: auto; height: auto; min-height: 100%; }
+
+    .rp-body {
+      justify-content: flex-start;
+      align-items: center;
+      padding: 32px 24px 56px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .rp-header {
+      display: flex; align-items: center; gap: 16px;
+      width: 100%; max-width: 920px;
+      margin-bottom: 28px;
+      opacity: 0; animation: fadeUp .4s ease .1s forwards;
+    }
+    .rp-tag {
+      display: inline-block; padding: 3px 10px;
+      border: 1.5px solid rgba(16,185,129,.4);
+      border-radius: 4px; font-size: 8px; font-weight: 900;
+      letter-spacing: 2px; color: #10b981; margin-bottom: 4px;
+    }
+    .rp-title {
+      font-size: 20px; font-weight: 900; letter-spacing: 4px; color: #f1f5f9;
+    }
+
+    /* ── Summary cards ───────────────────────── */
+    .rp-summary {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+      width: 100%; max-width: 920px; margin-bottom: 18px;
+      opacity: 0; animation: fadeUp .4s ease .22s forwards;
+    }
+    .stat-card {
+      background: rgba(15,23,42,.88); border: 1.5px solid rgba(51,65,85,.55);
+      border-radius: 14px; padding: 18px 16px;
+      display: flex; flex-direction: column; gap: 5px;
+      backdrop-filter: blur(8px); transition: border-color .22s;
+    }
+    .stat-card:hover { border-color: rgba(16,185,129,.5); }
+    .stat-card-label {
+      font-size: 9px; font-weight: 900; letter-spacing: 2px;
+      color: #475569; text-transform: uppercase;
+    }
+    .stat-card-val { font-size: 30px; font-weight: 900; color: #10b981; line-height: 1; }
+    .stat-card-sub { font-size: 10px; color: #334155; }
+
+    /* ── Charts row ──────────────────────────── */
+    .rp-charts {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+      width: 100%; max-width: 920px; margin-bottom: 18px;
+      opacity: 0; animation: fadeUp .4s ease .34s forwards;
+    }
+    .chart-card {
+      background: rgba(15,23,42,.88); border: 1.5px solid rgba(51,65,85,.55);
+      border-radius: 14px; padding: 20px 22px;
+      backdrop-filter: blur(8px);
+    }
+    .chart-title {
+      font-size: 9px; font-weight: 900; letter-spacing: 2px;
+      color: #475569; text-transform: uppercase; margin-bottom: 18px;
+    }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .bar-row:last-child { margin-bottom: 0; }
+    .bar-label { font-size: 10px; font-weight: 700; color: #64748b; width: 88px; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 5px; background: rgba(30,41,59,.9); border-radius: 3px; overflow: hidden; }
+    .bar-fill {
+      height: 100%; border-radius: 3px; width: 0;
+      transition: width 1.2s cubic-bezier(.22,1,.36,1);
+    }
+    .bar-val { font-size: 11px; font-weight: 900; color: #64748b; width: 32px; text-align: right; flex-shrink: 0; }
+
+    /* ── History table ────────────────────────── */
+    .rp-history {
+      width: 100%; max-width: 920px;
+      opacity: 0; animation: fadeUp .4s ease .46s forwards;
+    }
+    .hist-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .hist-title { font-size: 9px; font-weight: 900; letter-spacing: 2px; color: #475569; }
+    .hist-count { font-size: 9px; color: #334155; letter-spacing: .5px; }
+
+    .hist-table {
+      width: 100%; border-collapse: collapse;
+      background: rgba(15,23,42,.88); border: 1.5px solid rgba(51,65,85,.55);
+      border-radius: 14px; overflow: hidden; backdrop-filter: blur(8px);
+    }
+    .hist-table th {
+      text-align: left; padding: 10px 14px;
+      font-size: 9px; font-weight: 900; letter-spacing: 1.5px; color: #475569;
+      border-bottom: 1px solid rgba(51,65,85,.4); white-space: nowrap;
+    }
+    .hist-table td {
+      padding: 9px 14px; font-size: 11px; color: #94a3b8;
+      border-bottom: 1px solid rgba(15,23,42,.5);
+    }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .hist-table tbody tr:hover td { background: rgba(16,185,129,.04); }
+    .winner-tag {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 9px; font-weight: 900; letter-spacing: 1px; white-space: nowrap;
+    }
+
+    /* ── No-data state ────────────────────────── */
+    .no-data {
+      text-align: center; padding: 80px 0;
+      opacity: 0; animation: fadeUp .4s ease .2s forwards;
+    }
+    .no-data-icon { font-size: 42px; color: #1e293b; margin-bottom: 18px; }
+    .no-data h2   { font-size: 18px; font-weight: 700; color: #475569; margin-bottom: 8px; }
+    .no-data p    { font-size: 12px; color: #334155; margin-bottom: 24px; }
+
+    /* ── Accent glow blob ─────────────────────── */
+    #rpGlow {
+      position: fixed; width: 600px; height: 600px; top: -100px; right: -150px;
+      border-radius: 50%; filter: blur(120px); pointer-events: none; z-index: 0;
+      background: rgba(16,185,129,.06);
+    }
+
+    /* ── Toggle buttons ──────────────────────── */
+    #analysisBtn {
+      padding: 7px 18px; border-radius: 8px;
+      background: rgba(16,185,129,.12); border: 1.5px solid rgba(16,185,129,.35);
+      color: #10b981; font-size: 10px; font-weight: 900; letter-spacing: 1.5px;
+      cursor: pointer; transition: all .22s;
+    }
+    #analysisBtn:hover { background: rgba(16,185,129,.22); border-color: #10b981; }
+    #analysisBtn.open  { background: rgba(16,185,129,.22); border-color: #10b981; color: #6ee7b7; }
+
+    #detailsBtn {
+      padding: 7px 18px; border-radius: 8px;
+      background: rgba(99,102,241,.12); border: 1.5px solid rgba(99,102,241,.35);
+      color: #818cf8; font-size: 10px; font-weight: 900; letter-spacing: 1.5px;
+      cursor: pointer; transition: all .22s;
+    }
+    #detailsBtn:hover { background: rgba(99,102,241,.22); border-color: #818cf8; }
+    #detailsBtn.open  { background: rgba(99,102,241,.22); border-color: #818cf8; color: #c7d2fe; }
+
+    /* ── Collapsible sections ─────────────────── */
+    #analysisSection, #reportDetails {
+      width: 100%; max-width: 920px;
+      max-height: 0; overflow: hidden;
+      transition: max-height .65s cubic-bezier(.22,1,.36,1);
+    }
+    #analysisSection.open { max-height: 5000px; }
+    #reportDetails.open   { max-height: 5000px; }
+
+    /* No-data card inside analysis */
+    .no-records-card {
+      width: 100%; text-align: center;
+      padding: 60px 0 40px;
+      color: #334155;
+    }
+    .no-records-card .icon { font-size: 38px; margin-bottom: 16px; color: #1e293b; }
+    .no-records-card h3    { font-size: 16px; font-weight: 700; color: #475569; margin-bottom: 8px; }
+    .no-records-card p     { font-size: 12px; margin-bottom: 22px; }
+
+    .rd-divider {
+      width: 100%; border: none; border-top: 1px solid rgba(51,65,85,.35);
+      margin: 28px 0 24px;
+    }
+
+    /* Documentation & report sections */
+    .rd-section-hdr {
+      font-size: 8px; font-weight: 900; letter-spacing: 3px;
+      color: #475569; text-transform: uppercase; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .rd-doc-card {
+      background: rgba(10,15,28,.82); border: 1px solid rgba(51,65,85,.35);
+      border-radius: 14px; padding: 22px 26px; margin-bottom: 14px;
+      backdrop-filter: blur(8px);
+    }
+    .rd-doc-num {
+      font-size: 8px; font-weight: 900; letter-spacing: 3px;
+      color: #10b981; text-transform: uppercase; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .rd-doc-num::after {
+      content: ''; flex: 1; height: 1px; background: rgba(16,185,129,.2);
+    }
+    .rd-doc-body { font-size: 12px; color: #94a3b8; line-height: 1.75; }
+    .rd-doc-body p { margin-bottom: 10px; }
+    .rd-doc-body p:last-child { margin-bottom: 0; }
+    .rd-doc-body ul { padding-left: 20px; margin: 8px 0; }
+    .rd-doc-body li { margin-bottom: 6px; }
+    .rd-doc-body b { color: #e2e8f0; }
+    .rd-doc-body .hl { color: #f1f5f9; }
+  </style>
+</head>
+<body>
+
+  <div id="rpGlow"></div>
+
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+
+  <div class="page-body rp-body">
+
+    <!-- Header -->
+    <div class="rp-header">
+      <button class="back-btn" onclick="SB.navigate('main-menu.html')">← MENU</button>
+      <div style="flex:1;text-align:center">
+        <div class="rp-tag">STATISTICS</div>
+        <div class="rp-title">REPORT &amp; ANALYSIS</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="analysisBtn" onclick="toggleAnalysis()">📊 ANALYSIS DETAILS</button>
+        <button id="detailsBtn"  onclick="toggleDetails()">📋 REPORT DETAILS</button>
+        <button class="back-btn" id="clearBtn" onclick="promptClear()" style="border-color:rgba(239,68,68,.3);color:#64748b">CLEAR</button>
+      </div>
+    </div>
+
+    <!-- ── Analysis Details (collapsible) ──────── -->
+    <div id="analysisSection">
+    <div style="width:100%;display:flex;flex-direction:column;align-items:center;padding-top:8px">
+
+      <!-- Summary -->
+      <div class="rp-summary">
+        <div class="stat-card">
+          <div class="stat-card-label">Total Matches</div>
+          <div class="stat-card-val" id="sc-matches">0</div>
+          <div class="stat-card-sub">games played</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">P1 Win Rate</div>
+          <div class="stat-card-val" id="sc-winrate">0%</div>
+          <div class="stat-card-sub" id="sc-winrate-sub">0W – 0L</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Best Combo</div>
+          <div class="stat-card-val" id="sc-combo">0×</div>
+          <div class="stat-card-sub">highest multiplier</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Total Damage</div>
+          <div class="stat-card-val" id="sc-damage">0</div>
+          <div class="stat-card-sub">all matches combined</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="rp-charts">
+
+        <div class="chart-card">
+          <div class="chart-title">Performance (P1 + P2 combined)</div>
+          <div class="bar-row">
+            <div class="bar-label">Hits Landed</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-hits"   style="background:#818cf8;box-shadow:0 0 8px rgba(129,140,248,.4)"></div></div>
+            <div class="bar-val" id="bv-hits">0</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Spells Cast</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-spells" style="background:#a78bfa;box-shadow:0 0 8px rgba(167,139,250,.4)"></div></div>
+            <div class="bar-val" id="bv-spells">0</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Parries</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-parry"  style="background:#10b981;box-shadow:0 0 8px rgba(16,185,129,.4)"></div></div>
+            <div class="bar-val" id="bv-parry">0</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Best Combo</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-combo"  style="background:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.4)"></div></div>
+            <div class="bar-val" id="bv-combo">0</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">Matches by Mode</div>
+          <div class="bar-row">
+            <div class="bar-label">VS AI</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-vs"     style="background:#4f46e5;box-shadow:0 0 8px rgba(79,70,229,.4)"></div></div>
+            <div class="bar-val" id="bv-vs">0</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Story</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-story"  style="background:#f97316;box-shadow:0 0 8px rgba(249,115,22,.4)"></div></div>
+            <div class="bar-val" id="bv-story">0</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Versus 2P</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-versus" style="background:#a78bfa;box-shadow:0 0 8px rgba(167,139,250,.4)"></div></div>
+            <div class="bar-val" id="bv-versus">0</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Best Wave</div>
+            <div class="bar-track"><div class="bar-fill" id="bar-wave"   style="background:#f87171;box-shadow:0 0 8px rgba(248,113,113,.4)"></div></div>
+            <div class="bar-val" id="bv-wave">0</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- History table -->
+      <div class="rp-history">
+        <div class="hist-header">
+          <div class="hist-title">MATCH HISTORY</div>
+          <div class="hist-count" id="hist-count"></div>
+        </div>
+        <table class="hist-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Mode</th>
+              <th>Result</th>
+              <th>P1 Dmg</th>
+              <th>P2 Dmg</th>
+              <th>Total Hits</th>
+              <th>Best Combo</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+
+      <!-- No records card (shown when no data) -->
+      <div class="no-records-card" id="noRecords" style="display:none">
+        <div class="icon">▦</div>
+        <h3>No matches recorded yet</h3>
+        <p>Play a match to see your analysis here.</p>
+        <button class="btn-big" onclick="SB.navigate('main-menu.html')">PLAY NOW &nbsp;→</button>
+      </div>
+
+    </div><!-- /inner flex -->
+    </div><!-- /analysisSection -->
+
+    <!-- ── Report Details (always accessible) ── -->
+    <div id="reportDetails">
+      <hr class="rd-divider">
+
+        <div style="width:100%;max-width:920px">
+
+          <!-- Page title -->
+          <div style="text-align:center;margin-bottom:32px">
+            <div class="rd-section-hdr" style="justify-content:center;letter-spacing:4px">PROJECT DOCUMENTATION</div>
+            <div style="font-size:22px;font-weight:900;letter-spacing:3px;color:#f1f5f9;margin-bottom:6px">STICK BRAWL</div>
+            <div style="font-size:10px;color:#475569;letter-spacing:2px">Fuzzy Logic Combat AI System &nbsp;·&nbsp; Full Technical Report</div>
+          </div>
+
+          <!-- 1. Introduction -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">1. Introduction</div>
+            <div class="rd-doc-body">
+              <p><span class="hl">STICK BRAWL</span> is a fast-paced, competitive 2D arena fighter that seamlessly blends precise melee combat with arcane spellcasting. Designed for both intense multiplayer clashes and grueling solo gauntlets, the game tracks combat performance and aggregates the data into this comprehensive analytical report.</p>
+              <p>At the core of this project is a <b>Fuzzy Logic Inference System</b> that powers the opponent AI — enabling it to make intelligent, human-like combat decisions in real time based on the current game state.</p>
+            </div>
+          </div>
+
+          <!-- 2. Objective -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">2. Objective</div>
+            <div class="rd-doc-body">
+              <p>The primary objective varies by gamemode:</p>
+              <ul>
+                <li><b>Versus Mode (1P vs AI / 2P):</b> Deplete your opponent's health bar to zero before they do the same to you.</li>
+                <li><b>Story Mode:</b> Survive an endless gauntlet of increasingly difficult enemy waves for as long as possible.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 3. Gameplay System -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">3. Gameplay System</div>
+            <div class="rd-doc-body">
+              <p>Players must balance aggression and defense utilizing four core mechanics:</p>
+              <ul>
+                <li><b>Melee Combat:</b> Chain together rapid light and heavy physical strikes to overwhelm the opponent and build your multiplier.</li>
+                <li><b>Arcane Spells:</b> Cast powerful ranged abilities. Spells consume mana and have strategic cooldowns that must be managed.</li>
+                <li><b>Combo System:</b> Landing consecutive hits without taking damage builds a combo multiplier, significantly increasing damage output. The combo drops immediately upon taking a hit.</li>
+                <li><b>Parries:</b> Precisely timed blocks negate incoming damage and briefly stun the attacker, creating a critical opening for a counter-attack.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 4. System Rules & Conditions -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">4. System Rules &amp; Conditions</div>
+            <div class="rd-doc-body">
+              <ul>
+                <li>A standard match concludes immediately when a combatant's HP reaches zero. The battle engine instantly logs the victor and combat stats to the database.</li>
+                <li>Damage output, hits landed, spells cast, and parries are continuously tracked and aggregated to provide lifetime performance metrics.</li>
+                <li>In <b>Story Mode</b>, progressing to a new wave restores a small portion of the player's health. The match ends only when the player is defeated. The highest wave reached is permanently recorded on the analysis board.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 5. Fuzzy Logic System Overview -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">5. Fuzzy Logic AI — System Overview</div>
+            <div class="rd-doc-body">
+              <p>The opponent AI is implemented using a <b>Mamdani Fuzzy Inference System (FIS)</b>. Unlike traditional rule-based AI that uses hard thresholds (e.g. "if HP &lt; 30 then run"), fuzzy logic allows the AI to reason with <b>degrees of truth</b> — producing smoother, more realistic behaviour that closely resembles human decision-making.</p>
+              <p>The system is classified as <b>Multiple-Input Single-Output (MISO)</b>:</p>
+              <ul>
+                <li><b>4 crisp inputs</b> are read from the live game state every tick.</li>
+                <li>Each input is fuzzified into linguistic membership degrees.</li>
+                <li>A rule base of <b>10 IF-THEN rules</b> evaluates the fuzzified values.</li>
+                <li>The fired rules are aggregated and defuzzified into <b>1 crisp output</b> (0–100).</li>
+                <li>The output is mapped to one of three combat actions: <b>DEFEND</b>, <b>HARASS</b>, or <b>MELEE</b>.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 6. Input Variables -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">6. Input Variables &amp; Membership Functions</div>
+            <div class="rd-doc-body">
+              <p>The AI reads four input variables from the game state each frame:</p>
+              <ul>
+                <li>
+                  <b>Distance (0–700 px)</b> — pixel distance between the AI and the player.<br>
+                  <span style="color:#64748b">Linguistic terms: CLOSE · MEDIUM · FAR</span><br>
+                  <span style="color:#475569;font-size:10px">CLOSE = trapMF(0, 0, 80, 200) &nbsp;|&nbsp; MEDIUM = triMF(80, 200, 350) &nbsp;|&nbsp; FAR = trapMF(280, 400, 700, 700)</span>
+                </li>
+                <li>
+                  <b>Health (0.0–1.0)</b> — AI current HP as a ratio of max HP.<br>
+                  <span style="color:#64748b">Linguistic terms: LOW · MEDIUM · HIGH</span><br>
+                  <span style="color:#475569;font-size:10px">LOW = trapMF(0, 0, 0.20, 0.35) &nbsp;|&nbsp; MEDIUM = triMF(0.25, 0.50, 0.72) &nbsp;|&nbsp; HIGH = trapMF(0.60, 0.75, 1.0, 1.0)</span>
+                </li>
+                <li>
+                  <b>Mana (0.0–1.0)</b> — AI current mana as a ratio of max mana.<br>
+                  <span style="color:#64748b">Linguistic terms: LOW · MEDIUM · HIGH</span><br>
+                  <span style="color:#475569;font-size:10px">Same membership function shapes as Health.</span>
+                </li>
+                <li>
+                  <b>Threat (0.0–1.0)</b> — danger level from incoming enemy projectiles (proximity-weighted).<br>
+                  <span style="color:#64748b">Linguistic terms: NONE · MODERATE · HIGH</span><br>
+                  <span style="color:#475569;font-size:10px">NONE = trapMF(0, 0, 0.20, 0.40) &nbsp;|&nbsp; MODERATE = triMF(0.30, 0.50, 0.70) &nbsp;|&nbsp; HIGH = trapMF(0.55, 0.75, 1.0, 1.0)</span>
+                </li>
+              </ul>
+              <p>Two membership function shapes are used: <b>triMF</b> (triangular — peaks at one point) and <b>trapMF</b> (trapezoidal — flat top between two points). Both return a value in [0, 1] representing degree of membership.</p>
+            </div>
+          </div>
+
+          <!-- 7. Rule Base -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">7. Fuzzy Rule Base (10 Rules)</div>
+            <div class="rd-doc-body">
+              <p>The knowledge base contains <b>10 IF-THEN rules</b> encoding expert combat strategy. The AND operator uses the <b>MIN method</b> (Mamdani intersection). Each rule fires with a strength proportional to how well its antecedents are satisfied.</p>
+              <p><b>MELEE rules</b> (aggressive pursuit):</p>
+              <ul>
+                <li><b>R1:</b> IF dist IS CLOSE AND hp IS HIGH → MELEE RUSH <span style="color:#ef4444">(out: 100)</span></li>
+                <li><b>R2:</b> IF dist IS CLOSE AND hp IS MEDIUM → MELEE <span style="color:#ef4444">(out: 85)</span></li>
+                <li><b>R3:</b> IF mana IS LOW AND hp IS HIGH → MELEE (conserve mana) <span style="color:#ef4444">(out: 80)</span></li>
+                <li><b>R4:</b> IF dist IS MEDIUM AND hp IS HIGH AND mana IS LOW → MELEE <span style="color:#ef4444">(out: 75)</span></li>
+              </ul>
+              <p><b>HARASS rules</b> (ranged pressure):</p>
+              <ul>
+                <li><b>R5:</b> IF dist IS FAR AND mana IS HIGH → RANGED HARASS <span style="color:#f59e0b">(out: 50)</span></li>
+                <li><b>R6:</b> IF dist IS MEDIUM AND mana IS HIGH AND hp IS HIGH → HARASS <span style="color:#f59e0b">(out: 60)</span></li>
+                <li><b>R7:</b> IF threat IS MODERATE AND hp IS MEDIUM → CAUTIOUS HARASS <span style="color:#f59e0b">(out: 45)</span></li>
+              </ul>
+              <p><b>DEFEND rules</b> (evasion &amp; survival):</p>
+              <ul>
+                <li><b>R8:</b> IF threat IS HIGH → DEFEND <span style="color:#3b82f6">(out: 5)</span></li>
+                <li><b>R9:</b> IF hp IS LOW → DEFEND <span style="color:#3b82f6">(out: 10)</span></li>
+                <li><b>R10:</b> IF hp IS LOW AND threat IS MODERATE → FULL DEFEND <span style="color:#3b82f6">(out: 0)</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 8. Inference & Defuzzification -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">8. Inference &amp; Defuzzification</div>
+            <div class="rd-doc-body">
+              <p><b>Fuzzification</b> — Each crisp input is passed through its membership functions to produce a set of linguistic degrees. For example, a distance of 150px produces: CLOSE = 0.33, MEDIUM = 0.85, FAR = 0.0.</p>
+              <p><b>Rule Evaluation</b> — Each rule's firing strength (<i>w</i>) is computed using MIN for AND. Only rules with <i>w</i> &gt; 0.01 are considered "fired" and contribute to the output.</p>
+              <p><b>Aggregation</b> — All fired rules are combined into a single set of (weight, singleton output) pairs.</p>
+              <p><b>Defuzzification — Centre of Gravity (COG)</b></p>
+              <p style="font-family:monospace;background:rgba(30,41,59,.6);padding:10px 14px;border-radius:6px;color:#a78bfa;font-size:11px">COG = Σ(wᵢ × outᵢ) / Σwᵢ</p>
+              <p>The result is a crisp value in [0, 100] that is mapped to a final action:</p>
+              <ul>
+                <li><b style="color:#3b82f6">0 – 33 → DEFEND</b> — retreat, shield, place ice wall, heal if possible.</li>
+                <li><b style="color:#f59e0b">34 – 66 → HARASS</b> — maintain distance, cast fireballs, use burst spell.</li>
+                <li><b style="color:#ef4444">67 – 100 → MELEE</b> — close gap, punch, trigger ultimate if charged.</li>
+              </ul>
+              <p>If no rules fire (den &lt; 0.001), the system defaults to <b>HARASS</b> (COG = 50) as a neutral fallback.</p>
+            </div>
+          </div>
+
+          <!-- 9. AI Difficulty -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">9. AI Difficulty &amp; Reaction Speed</div>
+            <div class="rd-doc-body">
+              <p>The fuzzy inference cycle does not run every frame — it runs every <b>N frames</b>, where N is controlled by the difficulty setting. This simulates human reaction delay:</p>
+              <ul>
+                <li><b>Easy:</b> N = 14 &nbsp;(~4 decisions/second) — AI reacts slowly, giving the player time to act.</li>
+                <li><b>Medium:</b> N = 7 &nbsp;(~9 decisions/second) — balanced, normal AI behaviour.</li>
+                <li><b>Hard:</b> N = 4 &nbsp;(~15 decisions/second) — near-instantaneous reactions.</li>
+              </ul>
+              <p>The fuzzy logic output remains the same regardless of difficulty — only the <b>frequency of decision-making</b> changes, not the intelligence of the decisions.</p>
+            </div>
+          </div>
+
+          <!-- 10. Knowledge Acquisition -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">10. Knowledge Acquisition</div>
+            <div class="rd-doc-body">
+              <p>The fuzzy rules and membership function parameters in this system were derived through a structured knowledge acquisition process involving three main sources:</p>
+              <ul>
+                <li><b>Expert Game Design Analysis:</b> Combat AI behaviour from established 2D fighting games was studied to identify common strategic patterns — when to attack, retreat, or use special abilities based on health, distance, and resource levels.</li>
+                <li><b>Domain Knowledge Encoding:</b> Linguistic variables and thresholds were defined based on gameplay mechanics. For example, "CLOSE" distance (0–200px) is the effective melee range; "LOW" health (&lt;35%) reflects a critically vulnerable state requiring defensive action.</li>
+                <li><b>Iterative Playtesting:</b> Rules were refined through repeated test scenarios, observing AI decisions under various game states and adjusting membership function boundaries and rule weights until the AI exhibited natural, balanced behaviour across all three archetypes (Mage, Brawler, Ninja).</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 11. Market Analysis -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">11. Market Analysis</div>
+            <div class="rd-doc-body">
+              <p><b>Target Users</b></p>
+              <ul>
+                <li>Students and academics studying Artificial Intelligence, Fuzzy Logic, or Game AI — as an interactive educational demonstration.</li>
+                <li>Indie game developers seeking to implement non-scripted, adaptive AI opponents in 2D action games.</li>
+                <li>Casual gamers who enjoy competitive fighting games with intelligent AI adversaries.</li>
+              </ul>
+
+              <p><b>Problem Solved Using Fuzzy Logic</b></p>
+              <p>Traditional game AI relies on hard-coded if-else thresholds (e.g. "if HP &lt; 30, run away") which produce predictable, robotic behaviour. This system replaces that with fuzzy logic, enabling the AI to make <b>graduated, context-aware decisions</b> — behaving more like a human player who weighs multiple factors simultaneously.</p>
+
+              <p><b>Value &amp; Benefit</b></p>
+              <ul>
+                <li>Demonstrates real-time Mamdani FIS in a visually transparent, interactive environment.</li>
+                <li>Provides live membership function graphs, system model diagrams, and a debug panel — making the fuzzy reasoning process fully observable.</li>
+                <li>Serves as a teaching tool: instructors can use the game to explain fuzzification, rule evaluation, and defuzzification with concrete visual feedback.</li>
+              </ul>
+
+              <p><b>SWOT Analysis</b></p>
+              <ul>
+                <li><b style="color:#22c55e">Strength:</b> Fully functional, visually rich, transparent AI system with real-time debugging tools. Complete game loop with multiple modes and characters.</li>
+                <li><b style="color:#22c55e">Strength:</b> All fuzzy logic components (MF graphs, system diagram, debug panel) are built into the game itself — no external tools needed.</li>
+                <li><b style="color:#f59e0b">Weakness:</b> Currently MISO (single output axis). A MIMO system with multiple independent outputs would allow richer AI behaviour.</li>
+                <li><b style="color:#f59e0b">Weakness:</b> Rules are manually crafted — a machine learning approach (neuro-fuzzy) could auto-optimise rule weights.</li>
+                <li><b style="color:#818cf8">Opportunity:</b> Expandable to include more input variables (combo state, position, cooldowns) and more rules for deeper strategic depth.</li>
+                <li><b style="color:#818cf8">Opportunity:</b> Can be packaged as an educational module for university AI courses.</li>
+                <li><b style="color:#ef4444">Threat:</b> Neural network-based game AI (e.g. reinforcement learning) is becoming more common and may outperform hand-crafted fuzzy systems in complex scenarios.</li>
+              </ul>
+
+              <p><b>Growth Roadmap</b></p>
+              <ul>
+                <li><b>Phase 1 (Current):</b> Working prototype with 3 characters, 3 maps, 10 fuzzy rules, live AI transparency panel.</li>
+                <li><b>Phase 2:</b> Expand rule base (20+ rules), add combo-state and position inputs, implement MIMO output (aggression + movement + spell priority as separate axes).</li>
+                <li><b>Phase 3:</b> Neuro-fuzzy hybrid — use reinforcement learning to auto-tune membership function parameters from match data.</li>
+                <li><b>Phase 4:</b> Package as a browser-hosted educational tool with guided tutorials on fuzzy logic concepts, deployable in university AI labs.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 12. Conclusion -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">12. Conclusion</div>
+            <div class="rd-doc-body">
+              <p>This project successfully demonstrates the application of a <b>Mamdani Fuzzy Inference System</b> in a real-time, interactive game environment. The AI opponent in STICK BRAWL uses four crisp inputs — distance, health, mana, and threat — fuzzified through triangular and trapezoidal membership functions, evaluated against a rule base of ten IF-THEN rules, and defuzzified using the Centre of Gravity method to produce a single combat action.</p>
+              <p>The system exhibits several key strengths:</p>
+              <ul>
+                <li>The AI behaviour is <b>smooth and graduated</b>, avoiding the robotic predictability of threshold-based logic. At 60% health, the AI does not instantly switch modes — it gradually shifts weight between HARASS and DEFEND based on all four inputs simultaneously.</li>
+                <li>The reasoning process is <b>fully transparent</b> — players can observe the live fuzzy panel, membership function graphs, and system model diagram at any time during gameplay by pressing P.</li>
+                <li>The system meets all Progress 2 requirements: Knowledge Base, Knowledge Acquisition, Fuzzification, Inference Engine, Aggregation, and Defuzzification are all implemented and integrated.</li>
+              </ul>
+              <p>The main limitation is the MISO architecture — all combat decisions collapse into a single output axis. Future work would explore MIMO design, neuro-fuzzy parameter learning, and a broader rule base incorporating additional game-state variables.</p>
+              <p>Overall, this project confirms that fuzzy logic is a highly appropriate and effective approach for game AI decision-making — offering a strong balance of interpretability, flexibility, and real-time performance.</p>
+            </div>
+          </div>
+
+          <!-- 13. References -->
+          <div class="rd-doc-card">
+            <div class="rd-doc-num">13. References</div>
+            <div class="rd-doc-body">
+              <ul>
+                <li>Zadeh, L. A. (1965). <i>Fuzzy sets.</i> Information and Control, 8(3), 338–353.</li>
+                <li>Mamdani, E. H., &amp; Assilian, S. (1975). <i>An experiment in linguistic synthesis with a fuzzy logic controller.</i> International Journal of Man-Machine Studies, 7(1), 1–13.</li>
+                <li>Ross, T. J. (2010). <i>Fuzzy Logic with Engineering Applications</i> (3rd ed.). John Wiley &amp; Sons.</li>
+                <li>Buckland, M. (2005). <i>Programming Game AI by Example.</i> Wordware Publishing.</li>
+                <li>Millington, I., &amp; Funge, J. (2009). <i>Artificial Intelligence for Games</i> (2nd ed.). Morgan Kaufmann.</li>
+                <li>Yager, R. R., &amp; Filev, D. P. (1994). <i>Essentials of Fuzzy Modeling and Control.</i> Wiley.</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+    </div><!-- /reportDetails -->
+
+  </div><!-- /page-body -->
+
+  <script src="js/shared.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/bg-canvas.js"></script>
+  <script>
+  // Exposed outside IIFE so toggle functions can access it
+  const hist = SB.getHistory();
+
+  (function(){
+    'use strict';
+
+    const hasData = hist && hist.length > 0;
+
+    if (!hasData) {
+      document.getElementById('clearBtn').style.display = 'none';
+    }
+
+    if (!hasData) return; // stop populating stats if no data
+
+    const total  = hist.length;
+    const recent = hist.slice(-10).reverse();
+
+    /* ── Aggregate ──────────────────────────────── */
+    let totalDmg = 0, totalHits = 0, totalSpells = 0, totalParry = 0, bestCombo = 0;
+    let p1Wins = 0, p2Wins = 0;
+    const modes = { vs: 0, story: 0, versus: 0 };
+    let bestWave = 0;
+
+    hist.forEach(r => {
+      const s1 = r.stats?.p1 || {}, s2 = r.stats?.p2 || {};
+      totalDmg    += (s1.dmg    || 0) + (s2.dmg    || 0);
+      totalHits   += (s1.hits   || 0) + (s2.hits   || 0);
+      totalSpells += (s1.spells || 0) + (s2.spells || 0);
+      totalParry  += (s1.parries|| 0) + (s2.parries|| 0);
+      bestCombo    = Math.max(bestCombo, s1.maxCombo || 0, s2.maxCombo || 0);
+
+      if (r.type === 'survival') {
+        modes.story++;
+        bestWave = Math.max(bestWave, r.survivalWave || 0);
+      } else {
+        const m = r.mode || 'vs';
+        if (m === 'versus') modes.versus++;
+        else modes.vs++;
+        if (r.winnerColor && r.p1Color && r.winnerColor === r.p1Color) p1Wins++;
+        else if (r.winnerColor && r.p2Color && r.winnerColor === r.p2Color) p2Wins++;
+      }
+    });
+
+    const winRate = total > 0 ? Math.round(p1Wins / total * 100) : 0;
+
+    /* ── Summary cards ──────────────────────────── */
+    countUp(document.getElementById('sc-matches'), total,     900, '');
+    countUp(document.getElementById('sc-winrate'), winRate,   900, '%');
+    countUp(document.getElementById('sc-combo'),   bestCombo, 900, '×');
+    countUp(document.getElementById('sc-damage'),  totalDmg,  1000,'');
+    document.getElementById('sc-winrate-sub').textContent = p1Wins + 'W – ' + p2Wins + 'L';
+
+    /* ── Bars ───────────────────────────────────── */
+    const maxStat = Math.max(totalHits, totalSpells, totalParry, bestCombo, 1);
+    const maxMode = Math.max(modes.vs, modes.story, modes.versus, 1);
+
+    setTimeout(() => {
+      setBar('hits',   totalHits   / maxStat, totalHits);
+      setBar('spells', totalSpells / maxStat, totalSpells);
+      setBar('parry',  totalParry  / maxStat, totalParry);
+      setBar('combo',  bestCombo   / maxStat, bestCombo);
+
+      setBar('vs',     modes.vs     / maxMode, modes.vs);
+      setBar('story',  modes.story  / maxMode, modes.story);
+      setBar('versus', modes.versus / maxMode, modes.versus);
+      setBar('wave',   bestWave > 0 ? 1 : 0,  bestWave);
+      document.getElementById('bv-wave').textContent = bestWave > 0 ? 'W' + bestWave : '—';
+    }, 350);
+
+    /* ── History table ──────────────────────────── */
+    document.getElementById('hist-count').textContent =
+      'Showing last ' + Math.min(10, total) + ' of ' + total + ' matches';
+
+    recent.forEach((r, i) => {
+      const s1 = r.stats?.p1 || {}, s2 = r.stats?.p2 || {};
+      const combo   = Math.max(s1.maxCombo || 0, s2.maxCombo || 0);
+      const modeLabel = r.type === 'survival' ? 'Story'
+                      : r.mode === 'versus'   ? 'Versus 2P' : 'VS AI';
+      const winCol  = r.winnerColor || '#64748b';
+      const dateStr = r.ts
+        ? new Date(r.ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })
+        : '—';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td style="color:#334155">' + (total - i) + '</td>' +
+        '<td>' + modeLabel + '</td>' +
+        '<td><span class="winner-tag" style="background:' + winCol + '22;color:' + winCol + ';border:1px solid ' + winCol + '44">' + (r.winnerText || '—') + '</span></td>' +
+        '<td>' + (s1.dmg || 0) + '</td>' +
+        '<td>' + (s2.dmg || 0) + '</td>' +
+        '<td>' + ((s1.hits || 0) + (s2.hits || 0)) + '</td>' +
+        '<td>' + (combo > 0 ? combo + '×' : '—') + '</td>' +
+        '<td style="color:#334155">' + dateStr + '</td>';
+      document.getElementById('histBody').appendChild(tr);
+    });
+
+    /* ── Helpers ────────────────────────────────── */
+    function setBar(id, pct, val) {
+      const fill  = document.getElementById('bar-' + id);
+      const valEl = document.getElementById('bv-'  + id);
+      if (fill)  fill.style.width  = (Math.min(1, pct) * 100) + '%';
+      if (valEl) valEl.textContent = val;
+    }
+
+    function countUp(el, target, ms, suffix) {
+      if (!el) return;
+      suffix = suffix || '';
+      const start = Date.now();
+      const tick = () => {
+        const prog = Math.min(1, (Date.now() - start) / ms);
+        const ease = 1 - Math.pow(1 - prog, 3);
+        el.textContent = Math.round(target * ease) + suffix;
+        if (prog < 1) requestAnimationFrame(tick);
+        else el.textContent = target + suffix;
+      };
+      requestAnimationFrame(tick);
+    }
+
+  })();
+
+  function promptClear() {
+    if (confirm('Clear all match history? This cannot be undone.')) {
+      SB.clearHistory();
+      location.reload();
+    }
+  }
+
+  /* ── Analysis Details toggle ────────────────── */
+  function toggleAnalysis() {
+    const sec = document.getElementById('analysisSection');
+    const btn = document.getElementById('analysisBtn');
+    const isOpen = sec.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    btn.textContent = isOpen ? '✕ CLOSE ANALYSIS' : '📊 ANALYSIS DETAILS';
+    if (isOpen) {
+      const noRec = document.getElementById('noRecords');
+      if (noRec) noRec.style.display = (hist && hist.length > 0) ? 'none' : 'block';
+      setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    }
+  }
+
+  /* ── Report Details toggle (always works) ────── */
+  function toggleDetails() {
+    const sec = document.getElementById('reportDetails');
+    const btn = document.getElementById('detailsBtn');
+    const isOpen = sec.classList.toggle('open');
+    btn.classList.toggle('open', isOpen);
+    btn.textContent = isOpen ? '✕ CLOSE REPORT' : '📋 REPORT DETAILS';
+    if (isOpen)
+      setTimeout(() => sec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
+
+  if (sessionStorage.getItem('sbMusicOn')) MU.menu();
+  </script>
+
+</body>
+</html>
