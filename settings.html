@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STICK BRAWL — Settings</title>
+  <link rel="stylesheet" href="css/pages.css">
+</head>
+<body>
+
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+
+  <div class="page-body">
+    <div class="settings-wrap">
+
+      <!-- Header -->
+      <div class="settings-header" style="opacity:0;animation:fadeUp .4s ease .1s forwards">
+        <button class="back-btn" onclick="SB.navigate('main-menu.html')">← Back</button>
+        <h2 style="font-size:22px;font-weight:900;letter-spacing:3px">SETTINGS</h2>
+      </div>
+
+      <!-- AI Difficulty -->
+      <div class="set-card">
+        <label class="set-label">⚡ AI Difficulty</label>
+        <div class="set-opts">
+          <button class="opt-btn" id="dEasy"   onclick="setDiff('easy')">Easy</button>
+          <button class="opt-btn" id="dMedium" onclick="setDiff('medium')">Medium</button>
+          <button class="opt-btn" id="dHard"   onclick="setDiff('hard')">Hard</button>
+        </div>
+        <p class="set-desc" id="diffDesc"></p>
+      </div>
+
+      <!-- Chaos Mode -->
+      <div class="set-card">
+        <label class="set-label">☄ Chaos Mode</label>
+        <div class="set-opts">
+          <button class="opt-btn" id="chaosOn"  onclick="setChaos(true)">ON</button>
+          <button class="opt-btn" id="chaosOff" onclick="setChaos(false)">OFF</button>
+        </div>
+        <p class="set-desc">Meteors rain from above during battle — dangerous for both fighters!</p>
+      </div>
+
+      <!-- Round Timer -->
+      <div class="set-card">
+        <label class="set-label">⏱ Round Timer</label>
+        <div class="set-opts">
+          <button class="opt-btn" id="t60"  onclick="setTimer(60)">60s</button>
+          <button class="opt-btn" id="t99"  onclick="setTimer(99)">99s</button>
+          <button class="opt-btn" id="t999" onclick="setTimer(999)">∞</button>
+        </div>
+        <p class="set-desc">Time limit per round in VS &amp; Survival mode.</p>
+      </div>
+
+      <!-- Save -->
+      <button class="btn-big" onclick="save()"
+              style="opacity:0;animation:fadeUp .4s ease .56s forwards;width:100%">
+        ✔ &nbsp;Save &amp; Return to Menu
+      </button>
+
+    </div>
+  </div>
+
+  <script src="js/shared.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/bg-canvas.js"></script>
+  <script>
+    const cfg = SB.getSettings();
+    let _diff  = cfg.difficulty || 'medium';
+    let _chaos = !!cfg.chaos;
+    let _timer = cfg.timer || 99;
+
+    const descs = {
+      easy:   'AI reacts slowly — great for learning the controls and mechanics.',
+      medium: 'Standard fuzzy weights — a balanced, fair challenge.',
+      hard:   'Aggressive fuzzy rules and fast reaction — bring your best!',
+    };
+
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    function setDiff(d) {
+      _diff = d;
+      ['easy','medium','hard'].forEach(x =>
+        document.getElementById('d' + cap(x)).classList.toggle('active', x === d));
+      document.getElementById('diffDesc').textContent = descs[d] || '';
+    }
+    function setChaos(on) {
+      _chaos = on;
+      document.getElementById('chaosOn').classList.toggle('active',  on);
+      document.getElementById('chaosOff').classList.toggle('active', !on);
+    }
+    function setTimer(t) {
+      _timer = t;
+      [60,99,999].forEach(v =>
+        document.getElementById('t' + v).classList.toggle('active', v === t));
+    }
+    function save() {
+      SB.setSettings({ difficulty: _diff, chaos: _chaos, timer: _timer });
+      SB.navigate('main-menu.html');
+    }
+
+    // Init UI from saved settings
+    setDiff(_diff); setChaos(_chaos); setTimer(_timer);
+
+    if (sessionStorage.getItem('sbMusicOn')) MU.menu();
+  </script>
+
+</body>
+</html>

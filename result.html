@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STICK BRAWL — Result</title>
+  <link rel="stylesheet" href="css/pages.css">
+  <style>
+    #confettiCv { position:fixed; inset:0; pointer-events:none; z-index:0; }
+  </style>
+</head>
+<body>
+
+  <canvas id="confettiCv"></canvas>
+
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+
+  <!-- Dynamic winner glow blob -->
+  <div id="winGlow" style="position:fixed;width:500px;height:500px;top:10%;left:28%;
+       border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0;
+       background:rgba(79,70,229,.16);transition:background 1s"></div>
+
+  <div class="page-body" style="position:relative;z-index:1">
+    <div class="result-wrap">
+
+      <!-- Winner headline (typewriter) -->
+      <h1 class="result-winner" id="winnerText"></h1>
+      <p  class="result-sub"   id="subText">Match Complete</p>
+
+      <!-- Comparison table -->
+      <div class="result-table">
+        <div class="rt-col">
+          <div class="rt-name" id="p1Name" style="color:#4f46e5">Player 1</div>
+          <div class="rt-val" id="p1Dmg">—</div>
+          <div class="rt-val" id="p1Hits">—</div>
+          <div class="rt-val" id="p1Spells">—</div>
+          <div class="rt-val" id="p1Combo">—</div>
+          <div class="rt-val" id="p1Parry">—</div>
+        </div>
+        <div class="rt-labels">
+          <div class="rt-label" style="font-weight:900;color:#475569">&nbsp;</div>
+          <div class="rt-label">Damage Dealt</div>
+          <div class="rt-label">Hits Landed</div>
+          <div class="rt-label">Spells Cast</div>
+          <div class="rt-label">Max Combo</div>
+          <div class="rt-label">Parries</div>
+        </div>
+        <div class="rt-col">
+          <div class="rt-name" id="p2Name" style="color:#dc2626">Player 2</div>
+          <div class="rt-val" id="p2Dmg">—</div>
+          <div class="rt-val" id="p2Hits">—</div>
+          <div class="rt-val" id="p2Spells">—</div>
+          <div class="rt-val" id="p2Combo">—</div>
+          <div class="rt-val" id="p2Parry">—</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="result-btns">
+        <button class="btn-big"     onclick="SB.navigate('character-select.html')">↺ &nbsp;Play Again</button>
+        <button class="btn-big sec" onclick="SB.navigate('report.html')">📊 &nbsp;View Report</button>
+        <button class="btn-big sec" onclick="SB.navigate('main-menu.html')">⌂ &nbsp;Main Menu</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/shared.js"></script>
+  <script src="js/music.js"></script>
+  <script src="js/bg-canvas.js"></script>
+  <script>
+    const r = SB.getResult();
+
+    /* ── Typewriter effect ─────────────────────── */
+    function typeText(el, text, speed) {
+      el.textContent = '';
+      let i = 0;
+      const id = setInterval(() => {
+        el.textContent += text[i++];
+        if (i >= text.length) clearInterval(id);
+      }, speed);
+    }
+
+    /* ── Count-up animation ────────────────────── */
+    function countUp(el, target, ms, suffix) {
+      suffix = suffix || '';
+      if (!target) { el.textContent = '0' + suffix; return; }
+      const n = +target, start = Date.now();
+      const tick = () => {
+        const prog = Math.min(1, (Date.now() - start) / ms);
+        const ease = 1 - (1 - prog) ** 3;
+        el.textContent = Math.round(n * ease) + suffix;
+        if (prog < 1) requestAnimationFrame(tick);
+        else el.textContent = n + suffix;
+      };
+      requestAnimationFrame(tick);
+    }
+
+    /* ── Populate page ─────────────────────────── */
+    if (r) {
+      // Winner headline — typewriter 0.5s after reveal animation
+      setTimeout(() => {
+        typeText(document.getElementById('winnerText'), r.winnerText || 'MATCH OVER', 55);
+      }, 500);
+
+      // Winner colour
+      document.getElementById('winnerText').style.color      = r.winnerColor || '#f1f5f9';
+      document.getElementById('winnerText').style.textShadow = `0 0 40px ${r.winnerColor || '#4f46e5'}88`;
+      document.getElementById('winGlow').style.background    =
+        `radial-gradient(circle, ${r.winnerColor || '#4f46e5'}20, transparent 70%)`;
+
+      // Subtitle
+      document.getElementById('subText').textContent = r.type === 'survival'
+        ? `Wave ${r.survivalWave || 0}  ·  Score ${r.survivalScore || 0}`
+        : 'Best of 3  ·  Match Complete';
+
+      // Player names & colours
+      document.getElementById('p1Name').textContent = r.p1Name  || 'Player 1';
+      document.getElementById('p1Name').style.color = r.p1Color || '#4f46e5';
+      document.getElementById('p2Name').textContent = r.p2Name  || 'Player 2';
+      document.getElementById('p2Name').style.color = r.p2Color || '#dc2626';
+
+      // Count-up stats (start 1.2s after page loads)
+      const s1 = r.stats?.p1 || {}, s2 = r.stats?.p2 || {};
+      const delay = 1200;
+      setTimeout(() => {
+        countUp(document.getElementById('p1Dmg'),   s1.dmg    || 0, 1200);
+        countUp(document.getElementById('p1Hits'),  s1.hits   || 0, 1000);
+        countUp(document.getElementById('p1Spells'),s1.spells || 0, 900);
+        countUp(document.getElementById('p1Combo'), s1.maxCombo||0, 900, '×');
+        countUp(document.getElementById('p1Parry'), s1.parries|| 0, 900);
+        countUp(document.getElementById('p2Dmg'),   s2.dmg    || 0, 1200);
+        countUp(document.getElementById('p2Hits'),  s2.hits   || 0, 1000);
+        countUp(document.getElementById('p2Spells'),s2.spells || 0, 900);
+        countUp(document.getElementById('p2Combo'), s2.maxCombo||0, 900, '×');
+        countUp(document.getElementById('p2Parry'), s2.parries|| 0, 900);
+      }, delay);
+    } else {
+      // No result data
+      document.getElementById('winnerText').textContent = 'MATCH OVER';
+    }
+
+    /* ── Confetti canvas ───────────────────────── */
+    (function () {
+      const cv  = document.getElementById('confettiCv');
+      const ctx = cv.getContext('2d');
+      cv.width  = innerWidth; cv.height = innerHeight;
+
+      const winCol = r?.winnerColor || '#4f46e5';
+      const pal    = [winCol,'#fbbf24','#f1f5f9','#4ade80','#f87171','#60a5fa','#a78bfa'];
+
+      // Generate staggered pieces
+      const pieces = Array.from({ length: 100 }, (_, i) => ({
+        x:  Math.random() * cv.width,
+        y: -20 - Math.random() * cv.height * 0.5,
+        w:  5 + Math.random() * 9,
+        h:  4 + Math.random() * 5,
+        r:  Math.random() * Math.PI * 2,
+        dr: (Math.random() - 0.5) * 0.14,
+        vx: (Math.random() - 0.5) * 2.2,
+        vy: 2 + Math.random() * 3.5,
+        c:  pal[Math.floor(Math.random() * pal.length)],
+        delay: i * 18,
+        frame: 0,
+      }));
+
+      let frame = 0;
+      const maxFrames = 420;
+
+      function draw() {
+        if (frame > maxFrames) { ctx.clearRect(0,0,cv.width,cv.height); return; }
+        frame++;
+        ctx.clearRect(0, 0, cv.width, cv.height);
+
+        for (const p of pieces) {
+          if (frame < p.delay) continue;
+          p.x += p.vx; p.y += p.vy; p.r += p.dr; p.frame++;
+          if (p.y > cv.height + 20) { p.y = -20; p.x = Math.random() * cv.width; }
+
+          const a = Math.max(0, 1 - p.frame / (maxFrames - p.delay + 60));
+          ctx.save();
+          ctx.translate(p.x, p.y); ctx.rotate(p.r);
+          ctx.globalAlpha = a * 0.88;
+          ctx.fillStyle = p.c;
+          ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+          ctx.restore();
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    if (sessionStorage.getItem('sbMusicOn')) MU.menu();
+  </script>
+
+</body>
+</html>
